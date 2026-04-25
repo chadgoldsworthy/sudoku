@@ -424,6 +424,28 @@
   .win-btn-x:active { transform: scale(0.98); }
   .win-btn-x:hover { background: var(--accent-strong); }
 
+  .confirm-ok-x {
+    all: unset;
+    cursor: pointer;
+    box-sizing: border-box;
+    display: block;
+    width: 100%;
+    padding: 12px;
+    text-align: center;
+    background: var(--accent);
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 12px;
+    transition: background 0.12s ease, transform 0.1s ease;
+    touch-action: manipulation;
+    margin-top: 4px;
+  }
+  .confirm-ok-x:active { transform: scale(0.98); }
+  .confirm-ok-x:hover { background: var(--accent-strong); }
+  .confirm-ok-x.danger { background: var(--wrong); }
+  .confirm-ok-x.danger:hover { filter: brightness(1.05); }
+
   /* ===== DRAWER ===== */
   .drawer-x {
     position: absolute;
@@ -857,6 +879,15 @@
       </div>
     </div>
 
+    <div class="modal-x" id="modal-confirm-x">
+      <div class="modal-card-x">
+        <h3 id="confirm-title-x">Are you sure?</h3>
+        <p id="confirm-body-x">This action cannot be undone.</p>
+        <button type="button" class="confirm-ok-x" id="confirm-ok-x">Confirm</button>
+        <button type="button" class="modal-cancel-x" id="confirm-cancel-x">Cancel</button>
+      </div>
+    </div>
+
     <div class="drawer-x" id="stats-drawer-x">
       <div class="drawer-head-x">
         <h3>Statistics</h3>
@@ -891,10 +922,17 @@
         <p class="drawer-label-x">Hints &amp; assistance</p>
         <div class="set-row-x">
           <div class="set-text-x">
-            <p class="set-title-x">Highlight incorrect</p>
-            <p class="set-sub-x">Show conflicts with the puzzle in red.</p>
+            <p class="set-title-x">Highlight conflicts</p>
+            <p class="set-sub-x">Mark a cell red when the same digit already appears in its row, column or box.</p>
           </div>
-          <button type="button" class="switch-x on" data-toggle="highlightWrong" aria-label="Toggle"></button>
+          <button type="button" class="switch-x on" data-toggle="highlightConflict" aria-label="Toggle"></button>
+        </div>
+        <div class="set-row-x">
+          <div class="set-text-x">
+            <p class="set-title-x">Highlight incorrect</p>
+            <p class="set-sub-x">Mark a cell red when the digit you entered doesn't match the puzzle's solution, even if there's no conflict yet.</p>
+          </div>
+          <button type="button" class="switch-x" data-toggle="highlightIncorrect" aria-label="Toggle"></button>
         </div>
         <div class="set-row-x">
           <div class="set-text-x">
@@ -1102,9 +1140,10 @@
     values: null,      // current values (user mutable)
     pencils: null,
     selected: null,
+    multiCells: [],
     tool: "pen",
     hint: null,
-    toggles: { highlightWrong:true, autoPencil:false, autoRemovePencil:true, highlightPeers:true, highlightSameNumber:true },
+    toggles: { highlightConflict:true, highlightIncorrect:false, autoPencil:false, autoRemovePencil:true, highlightPeers:true, highlightSameNumber:true },
     theme: "light",
     timerSec: 0,
     timerInterval: null,
@@ -1127,6 +1166,7 @@
     state.values = clone(puzzle);
     state.pencils = emptyPencils();
     state.selected = null;
+    state.multiCells = [];
     state.hint = null;
     state.timerSec = 0;
     state.won = false;
@@ -1153,7 +1193,7 @@
     return out;
   }
 
-  function isWrong(r, c){
+  function hasConflict(r, c){
     const v = state.values[r][c];
     if (v === 0) return false;
     for (let i=0;i<9;i++){
@@ -1165,6 +1205,12 @@
       if ((br+i !== r || bc+j !== c) && state.values[br+i][bc+j] === v) return true;
     }
     return false;
+  }
+  function isIncorrect(r, c){
+    if (state.board[r][c] !== 0) return false;
+    const v = state.values[r][c];
+    if (v === 0) return false;
+    return state.solution && v !== state.solution[r][c];
   }
 
   function isComplete(){
@@ -1229,6 +1275,9 @@
     const selVal = sel ? state.values[sel.r][sel.c] : 0;
     const h = state.hint;
     const lp = state.lastPlaced;
+    const multi = state.multiCells || [];
+    const multiSet = new Set(multi.map(p => p.r * 9 + p.c));
+    const isMulti = multi.length > 1;
 
     for (let r=0;r<9;r++){
       for (let c=0;c<9;c++){
@@ -1240,9 +1289,9 @@
         if (c===8) cell.classList.add("nr");
         if (r===8) cell.classList.add("nb");
 
-        const isSel = sel && sel.r===r && sel.c===c;
-        const isPeer = sel && !isSel && state.toggles.highlightPeers && (sel.r===r || sel.c===c || (Math.floor(sel.r/3)===Math.floor(r/3) && Math.floor(sel.c/3)===Math.floor(c/3)));
-        const isSame = sel && !isSel && state.toggles.highlightSameNumber && selVal !== 0 && state.values[r][c] === selVal;
+        const isSel = multiSet.has(r * 9 + c) || (!isMulti && sel && sel.r===r && sel.c===c);
+        const isPeer = !isMulti && sel && !isSel && state.toggles.highlightPeers && (sel.r===r || sel.c===c || (Math.floor(sel.r/3)===Math.floor(r/3) && Math.floor(sel.c/3)===Math.floor(c/3)));
+        const isSame = !isMulti && sel && !isSel && state.toggles.highlightSameNumber && selVal !== 0 && state.values[r][c] === selVal;
 
         if (h){
           const isFocus = h.r===r && h.c===c;
@@ -1263,7 +1312,9 @@
         if (v !== 0){
           let cls = "v";
           if (!isOrig){
-            cls = state.toggles.highlightWrong && isWrong(r, c) ? "w" : "u";
+            const conflict = state.toggles.highlightConflict && hasConflict(r, c);
+            const incorrect = state.toggles.highlightIncorrect && isIncorrect(r, c);
+            cls = (conflict || incorrect) ? "w" : "u";
           }
           const popCls = (lp && lp.r === r && lp.c === c) ? " pop" : "";
           cell.innerHTML = `<span class="${cls}${popCls}">${v}</span>`;
@@ -1333,8 +1384,27 @@
   }
 
   function placeNumber(digit){
-    if (!state.selected || state.won) return;
-    const { r, c } = state.selected;
+    if (state.won) return;
+    const cells = (state.multiCells && state.multiCells.length) ? state.multiCells : (state.selected ? [state.selected] : []);
+    if (cells.length === 0) return;
+    if (cells.length > 1){
+      // Multi-cell: pen is a no-op; pencil toggles digit in every empty cell of the selection.
+      if (state.tool === "pencil"){
+        // If every targetable cell already has the digit, remove it; otherwise add it (turn-on bias).
+        const targets = cells.filter(({r, c}) => state.board[r][c] === 0 && state.values[r][c] === 0);
+        if (targets.length === 0){ render(); return; }
+        const allHave = targets.every(({r, c}) => state.pencils[r][c].has(digit));
+        for (const {r, c} of targets){
+          if (allHave) state.pencils[r][c].delete(digit);
+          else state.pencils[r][c].add(digit);
+        }
+        if (state.hint) closeHintPop();
+        render();
+      }
+      return;
+    }
+    // Single cell — original behavior
+    const { r, c } = cells[0];
     if (state.board[r][c] !== 0) return;
     if (state.tool === "pen"){
       if (state.values[r][c] === digit){
@@ -1368,11 +1438,17 @@
   }
 
   function clearSelectedPen(){
-    if (!state.selected || state.won) return;
-    const { r, c } = state.selected;
-    if (state.board[r][c] !== 0) return;
-    if (state.values[r][c] === 0) return;
-    state.values[r][c] = 0;
+    if (state.won) return;
+    const cells = (state.multiCells && state.multiCells.length) ? state.multiCells : (state.selected ? [state.selected] : []);
+    if (cells.length === 0) return;
+    let changed = false;
+    for (const { r, c } of cells){
+      if (state.board[r][c] !== 0) continue;
+      if (state.values[r][c] === 0) continue;
+      state.values[r][c] = 0;
+      changed = true;
+    }
+    if (!changed) return;
     if (state.hint) closeHintPop();
     render();
   }
@@ -1479,6 +1555,31 @@
     return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   }
 
+  let _confirmHandler = null;
+  function confirmModal({ title, body, okLabel, danger, onConfirm }){
+    document.getElementById("confirm-title-x").textContent = title;
+    document.getElementById("confirm-body-x").textContent = body;
+    const okBtn = document.getElementById("confirm-ok-x");
+    okBtn.textContent = okLabel || "Confirm";
+    okBtn.classList.toggle("danger", !!danger);
+    _confirmHandler = onConfirm;
+    document.getElementById("modal-confirm-x").classList.add("open");
+  }
+  function closeConfirm(){
+    _confirmHandler = null;
+    document.getElementById("modal-confirm-x").classList.remove("open");
+  }
+  function hasUserProgress(){
+    if (!state.values || !state.board) return false;
+    for (let r=0;r<9;r++) for (let c=0;c<9;c++){
+      if (state.board[r][c] === 0){
+        if (state.values[r][c] !== 0) return true;
+        if (state.pencils[r][c] && state.pencils[r][c].size > 0) return true;
+      }
+    }
+    return false;
+  }
+
   function renderStats(){
     const body = document.getElementById("stats-body-x");
     const data = loadStats();
@@ -1555,14 +1656,25 @@
     }
   }
 
-  function resetPuzzle(){
+  function doResetPuzzle(){
     state.values = clone(state.board);
     state.pencils = emptyPencils();
     state.selected = null;
+    state.multiCells = [];
     state.won = false;
     state.didReset = true;
     closeHintPop();
     render();
+  }
+  function requestReset(){
+    if (!hasUserProgress()){ doResetPuzzle(); return; }
+    confirmModal({
+      title: "Reset puzzle?",
+      body: "This clears every digit and pencil mark you've entered. The timer keeps running.",
+      okLabel: "Reset",
+      danger: true,
+      onConfirm: () => { closeConfirm(); doResetPuzzle(); }
+    });
   }
 
   function fmtTime(s){
@@ -1643,6 +1755,14 @@
   }
 
   let dragErase = false;
+  let dragSelect = false;
+  function addToMultiCells(r, c){
+    for (const cell of state.multiCells){
+      if (cell.r === r && cell.c === c) return false;
+    }
+    state.multiCells.push({ r, c });
+    return true;
+  }
   function setupHandlers(){
     const grid = document.getElementById("grid-x");
     grid.addEventListener("pointerdown", (e) => {
@@ -1656,19 +1776,31 @@
         render();
       } else {
         state.selected = { r, c };
+        state.multiCells = [{ r, c }];
+        dragSelect = true;
+        try { grid.setPointerCapture(e.pointerId); } catch(_){}
         render();
       }
     });
     grid.addEventListener("pointermove", (e) => {
-      if (!dragErase) return;
-      const el = document.elementFromPoint(e.clientX, e.clientY);
-      const cell = el && el.closest && el.closest(".ca-x");
-      if (!cell || !grid.contains(cell)) return;
-      const r = parseInt(cell.dataset.r, 10), c = parseInt(cell.dataset.c, 10);
-      eraseCell(r, c);
-      render();
+      if (dragErase){
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        const cell = el && el.closest && el.closest(".ca-x");
+        if (!cell || !grid.contains(cell)) return;
+        const r = parseInt(cell.dataset.r, 10), c = parseInt(cell.dataset.c, 10);
+        eraseCell(r, c);
+        render();
+        return;
+      }
+      if (dragSelect){
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        const cell = el && el.closest && el.closest(".ca-x");
+        if (!cell || !grid.contains(cell)) return;
+        const r = parseInt(cell.dataset.r, 10), c = parseInt(cell.dataset.c, 10);
+        if (addToMultiCells(r, c)) render();
+      }
     });
-    const stop = () => { dragErase = false; };
+    const stop = () => { dragErase = false; dragSelect = false; };
     document.addEventListener("pointerup", stop);
     document.addEventListener("pointercancel", stop);
 
@@ -1689,7 +1821,17 @@
       });
     });
     document.getElementById("hint-btn-x").addEventListener("click", showHint);
-    document.getElementById("reset-btn-x").addEventListener("click", resetPuzzle);
+    document.getElementById("reset-btn-x").addEventListener("click", requestReset);
+
+    document.getElementById("confirm-ok-x").addEventListener("click", () => {
+      const fn = _confirmHandler;
+      if (fn) fn();
+      else closeConfirm();
+    });
+    document.getElementById("confirm-cancel-x").addEventListener("click", closeConfirm);
+    document.getElementById("modal-confirm-x").addEventListener("click", (e) => {
+      if (e.target.id === "modal-confirm-x") closeConfirm();
+    });
 
     document.getElementById("hint-pop-x").addEventListener("click", (e) => {
       const btn = e.target.closest("[data-act]");
@@ -1727,7 +1869,21 @@
       document.getElementById("modal-diff-x").classList.remove("open");
     });
     document.querySelectorAll(".diff-opt-x").forEach(el => {
-      el.addEventListener("click", () => newPuzzle(el.dataset.diff));
+      el.addEventListener("click", () => {
+        const diff = el.dataset.diff;
+        if (state.won || !hasUserProgress()){
+          newPuzzle(diff);
+          return;
+        }
+        document.getElementById("modal-diff-x").classList.remove("open");
+        confirmModal({
+          title: "Start a new puzzle?",
+          body: "Your current progress will be lost.",
+          okLabel: "Start " + DIFF_LABELS[diff],
+          danger: false,
+          onConfirm: () => { closeConfirm(); newPuzzle(diff); }
+        });
+      });
     });
     document.getElementById("modal-diff-x").addEventListener("click", (e) => {
       if (e.target.id === "modal-diff-x") document.getElementById("modal-diff-x").classList.remove("open");
@@ -1745,14 +1901,17 @@
       if (e.key >= "1" && e.key <= "9"){
         placeNumber(parseInt(e.key, 10));
       } else if (e.key === "Backspace" || e.key === "Delete" || e.key === "0"){
-        if (state.selected){
-          const { r, c } = state.selected;
-          if (state.board[r][c] === 0){
+        const cells = (state.multiCells && state.multiCells.length) ? state.multiCells : (state.selected ? [state.selected] : []);
+        let changed = false;
+        for (const { r, c } of cells){
+          if (state.board[r][c] !== 0) continue;
+          if (state.values[r][c] !== 0 || state.pencils[r][c].size > 0){
             state.values[r][c] = 0;
             state.pencils[r][c].clear();
-            render();
+            changed = true;
           }
         }
+        if (changed) render();
       } else if (state.selected){
         let { r, c } = state.selected;
         if (e.key === "ArrowUp") r = Math.max(0, r-1);
@@ -1761,6 +1920,7 @@
         else if (e.key === "ArrowRight") c = Math.min(8, c+1);
         else return;
         state.selected = { r, c };
+        state.multiCells = [{ r, c }];
         render();
       }
     });
@@ -1783,6 +1943,10 @@
     if (!p) return;
     if (p.theme === "light" || p.theme === "dark") state.theme = p.theme;
     if (p.toggles && typeof p.toggles === "object"){
+      // Backward-compat: old "highlightWrong" maps to new "highlightConflict".
+      if (typeof p.toggles.highlightWrong === "boolean" && typeof p.toggles.highlightConflict !== "boolean"){
+        state.toggles.highlightConflict = p.toggles.highlightWrong;
+      }
       for (const k of Object.keys(state.toggles)){
         if (typeof p.toggles[k] === "boolean") state.toggles[k] = p.toggles[k];
       }
