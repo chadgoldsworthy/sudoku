@@ -37,3 +37,8 @@ python3 -m http.server 8000
 ## State persistence
 
 All preferences and stats are stored locally on your device via `localStorage`. Nothing is sent to any server. State survives reloads and app restarts. On iOS Safari, "Add to Home Screen" makes storage more durable (avoids ITP eviction).
+
+## Built with Claude Code
+```zsh
+claude --resume "SUDOKU GITHUB PAGE"
+```
