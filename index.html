@@ -55,6 +55,13 @@
     --shadow-md: 0 1px 3px rgba(17,20,43,.06), 0 4px 12px rgba(17,20,43,.04);
     --shadow-lg: 0 4px 16px rgba(17,20,43,.08), 0 12px 32px rgba(17,20,43,.10);
     --modal-overlay: rgba(17, 20, 43, 0.45);
+    --col-red-fg: #dc2626;    --col-red-bg: #fee2e2;
+    --col-orange-fg: #ea580c; --col-orange-bg: #ffedd5;
+    --col-yellow-fg: #ca8a04; --col-yellow-bg: #fef3c7;
+    --col-green-fg: #16a34a;  --col-green-bg: #dcfce7;
+    --col-blue-fg: #2563eb;   --col-blue-bg: #dbeafe;
+    --col-purple-fg: #9333ea; --col-purple-bg: #f3e8ff;
+    --border: var(--border-med);
   }
 
   /* ===== DARK THEME ===== */
@@ -88,6 +95,13 @@
     --shadow-md: 0 2px 8px rgba(0,0,0,.4);
     --shadow-lg: 0 6px 24px rgba(0,0,0,.5);
     --modal-overlay: rgba(0, 0, 0, 0.65);
+    --col-red-fg: #fca5a5;    --col-red-bg: rgba(239,68,68,0.22);
+    --col-orange-fg: #fdba74; --col-orange-bg: rgba(249,115,22,0.22);
+    --col-yellow-fg: #fde047; --col-yellow-bg: rgba(234,179,8,0.22);
+    --col-green-fg: #86efac;  --col-green-bg: rgba(34,197,94,0.22);
+    --col-blue-fg: #93c5fd;   --col-blue-bg: rgba(59,130,246,0.24);
+    --col-purple-fg: #d8b4fe; --col-purple-bg: rgba(168,85,247,0.24);
+    --border: var(--border-med);
   }
 
   /* ===== APP SHELL ===== */
@@ -187,6 +201,15 @@
     overflow: hidden;
     touch-action: none;
     box-shadow: var(--shadow-md);
+    position: relative;
+  }
+  .sel-overlay-x {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 3;
   }
   .ca-x {
     display: flex;
@@ -196,24 +219,37 @@
     font-size: clamp(16px, 4.5vw, 22px);
     font-weight: 500;
     line-height: 1;
-    border-right: 1px solid var(--border-thin);
-    border-bottom: 1px solid var(--border-thin);
     user-select: none;
     -webkit-user-select: none;
     cursor: pointer;
     color: var(--text);
     transition: background 0.12s ease;
   }
-  .ca-x.tr { border-right: 2px solid var(--grid-thick); }
-  .ca-x.tb { border-bottom: 2px solid var(--grid-thick); }
-  .ca-x.nr { border-right: none; }
-  .ca-x.nb { border-bottom: none; }
+  /* Grid lines are drawn as a single SVG overlay (.grid-lines-x). Thin lines
+     are painted first, thick block-divider lines second, so thick always wins
+     at intersections. Selection outline (.sel-overlay-x) sits above both. */
+  .grid-lines-x {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 2;
+  }
   .ca-x.peer { background: var(--accent-softer); }
   .ca-x.same { background: var(--accent-mid); }
-  .ca-x.sel { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); z-index: 1; }
+  .ca-x.sel { background: var(--accent-soft); z-index: 1; }
   .ca-x.hint-unit { background: var(--hint-unit); }
   .ca-x.hint-pattern { background: var(--hint-cell); box-shadow: inset 0 0 0 1px var(--hint); }
-  .ca-x.hint-focus { background: var(--hint-cell); box-shadow: inset 0 0 0 2px var(--hint); z-index: 1; }
+  .ca-x.hint-focus {
+    background: var(--hint-cell);
+    z-index: 1;
+    animation: hintFocusPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes hintFocusPulse {
+    0%, 100% { box-shadow: inset 0 0 0 2px var(--hint); }
+    50%      { box-shadow: inset 0 0 0 2px var(--hint), 0 0 0 6px rgba(245,166,35,0.22); }
+  }
   .ca-x .v { color: var(--text); }
   .ca-x .u { color: var(--user); font-weight: 600; }
   .ca-x .w { color: var(--wrong); font-weight: 600; }
@@ -235,20 +271,165 @@
   }
   .ca-x .pen-x span.hl { color: var(--accent); font-weight: 700; }
 
-  /* Cell pulse animation when number placed */
+  /* Cell pulse animation when number placed. Combines a small drop-in (subtle
+     translate + opacity) with the existing scale pop, so placing a pen value
+     where pencil marks were also feels like a smooth replacement. */
   @keyframes cellPop {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.18); }
+    0%   { transform: scale(0.7) translateY(-4px); opacity: 0; }
+    55%  { transform: scale(1.15) translateY(0); opacity: 1; }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+  }
+  .ca-x .pop { display: inline-block; animation: cellPop 0.22s cubic-bezier(.34,1.56,.64,1); }
+
+  /* === Animations: row/col/box completion wave ===
+     The cells of a freshly-completed unit briefly flash green with a small
+     scale bump. We animate `box-shadow` only (not background) so the flash
+     does not fight with sel/peer/cb-* state. */
+  @keyframes unitWave {
+    0%, 100% { box-shadow: inset 0 0 0 0 rgba(22,160,133,0); transform: scale(1); }
+    35%      { box-shadow: inset 0 0 0 3px rgba(22,160,133,0.35), 0 0 12px rgba(22,160,133,0.30); transform: scale(1.06); }
+  }
+  .ca-x.wave { animation: unitWave 0.55s cubic-bezier(.25,1,.5,1); z-index: 2; }
+
+  /* === Win cascade ===
+     All 81 cells pulse outward from the center cell. Delays are set inline
+     by JS based on Chebyshev distance, so the pulse radiates in rings. */
+  @keyframes winCascade {
+    0%, 100% { transform: scale(1); color: var(--text); }
+    50%      { transform: scale(1.28); color: var(--accent); }
+  }
+  .ca-x.cascade > * { animation: winCascade 0.55s cubic-bezier(.25,1,.5,1); }
+
+  /* === Last cell anticipation === */
+  @keyframes lastBreathe {
+    0%, 100% { box-shadow: inset 0 0 0 1px rgba(91,103,236,0.30); }
+    50%      { box-shadow: inset 0 0 0 2px var(--accent), 0 0 12px rgba(91,103,236,0.35); }
+  }
+  .ca-x.last-empty { animation: lastBreathe 1.6s ease-in-out infinite; }
+
+  /* === Correct placement glow === */
+  @keyframes correctGlow {
+    0%   { box-shadow: 0 0 0 0 rgba(22,160,133,0.45); }
+    35%  { box-shadow: 0 0 0 8px rgba(22,160,133,0.30); }
+    100% { box-shadow: 0 0 0 8px rgba(22,160,133,0); }
+  }
+  .ca-x.glow-correct { animation: correctGlow 0.6s ease-out; z-index: 2; }
+
+  /* === Wrong placement: shake + red flash === */
+  @keyframes wrongShake {
+    0%, 100% { transform: translateX(0); }
+    15% { transform: translateX(-3px); }
+    30% { transform: translateX(3px); }
+    45% { transform: translateX(-2px); }
+    60% { transform: translateX(2px); }
+    75% { transform: translateX(-1px); }
+    90% { transform: translateX(1px); }
+  }
+  @keyframes wrongFlash {
+    0%   { box-shadow: 0 0 0 0 rgba(230,69,96,0.50); }
+    25%  { box-shadow: 0 0 0 6px rgba(230,69,96,0.35); }
+    100% { box-shadow: 0 0 0 6px rgba(230,69,96,0); }
+  }
+  .ca-x.shake-wrong {
+    animation: wrongShake 0.45s cubic-bezier(.36,.07,.19,.97), wrongFlash 0.65s ease-out;
+    z-index: 2;
+  }
+
+  /* === Color swatch ripple — applied briefly to each cell that just got a
+         color change in select / pencil+select mode. === */
+  @keyframes colorRipple {
+    0%   { box-shadow: inset 0 0 0 0 var(--accent), 0 0 0 0 rgba(91,103,236,0.40); transform: scale(1); }
+    50%  { box-shadow: inset 0 0 0 2px var(--accent), 0 0 0 6px rgba(91,103,236,0.20); transform: scale(1.04); }
+    100% { box-shadow: inset 0 0 0 0 var(--accent), 0 0 0 6px rgba(91,103,236,0); transform: scale(1); }
+  }
+  .ca-x.ripple { animation: colorRipple 0.42s ease-out; z-index: 2; }
+
+  /* === Selection outline draw-in === */
+  @keyframes drawSelection {
+    from { stroke-dashoffset: var(--sel-len, 100); }
+    to   { stroke-dashoffset: 0; }
+  }
+  .sel-overlay-x path.draw-in {
+    stroke-dasharray: var(--sel-len, 100);
+    animation: drawSelection 0.18s cubic-bezier(.5,.9,.5,1) forwards;
+  }
+
+  /* === Numpad digit complete === */
+  .na-x { position: relative; overflow: hidden; }
+  .na-x .check-mark {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--success);
+    font-size: 22px;
+    font-weight: 700;
+    opacity: 0;
+    transform: scale(0.4);
+    pointer-events: none;
+  }
+  @keyframes numDoneFlash {
+    0%   { background: var(--surface); opacity: 1; }
+    25%  { background: rgba(22,160,133,0.25); opacity: 1; }
+    100% { background: var(--surface); opacity: 0.35; }
+  }
+  @keyframes checkPop {
+    0%   { opacity: 0; transform: scale(0.4); }
+    35%  { opacity: 1; transform: scale(1.15); }
+    65%  { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1); }
+  }
+  @keyframes contentFadeOut {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+  }
+  .na-x.just-done { animation: numDoneFlash 0.85s ease-out forwards; }
+  .na-x.just-done .nv,
+  .na-x.just-done .nc { animation: contentFadeOut 0.3s ease-out 0.15s forwards; }
+  .na-x.just-done .check-mark { animation: checkPop 0.85s ease-out forwards; }
+
+  /* === Tool button activation pulse === */
+  @keyframes toolActivate {
+    0%   { transform: scale(0.94); }
+    60%  { transform: scale(1.04); }
     100% { transform: scale(1); }
   }
-  .ca-x .pop { display: inline-block; animation: cellPop 0.18s ease-out; }
+  .tool-x.just-activated { animation: toolActivate 0.22s cubic-bezier(.34,1.56,.64,1); }
+
+  /* === Color swatch active pulse === */
+  .col-sw-x.just-tapped { animation: toolActivate 0.22s cubic-bezier(.34,1.56,.64,1); }
 
   /* ===== TOOLS ===== */
   .tools-x {
     display: flex;
     gap: 6px;
     margin-bottom: 12px;
+    position: relative;
   }
+  /* Sliding indicator for the active pen/pencil/eraser tool. JS positions
+     this element under the current tool button, so swapping tools feels like
+     a smooth glide rather than an instant color toggle. */
+  .tool-slide-x {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0;
+    transition:
+      left 0.24s cubic-bezier(.34,1.2,.5,1),
+      top 0.24s cubic-bezier(.34,1.2,.5,1),
+      width 0.24s cubic-bezier(.34,1.2,.5,1),
+      height 0.24s cubic-bezier(.34,1.2,.5,1),
+      opacity 0.18s ease;
+  }
+  .tool-slide-x.ready { opacity: 1; }
   .tool-x {
     all: unset;
     cursor: pointer;
@@ -271,10 +452,22 @@
     transition: transform 0.1s ease, background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
     touch-action: manipulation;
   }
+  .tool-x { position: relative; z-index: 1; }
   .tool-x:active { transform: scale(0.96); }
   .tool-x.active {
-    background: var(--accent-soft);
     color: var(--accent);
+  }
+  /* Pen/pencil/eraser: the slider shows the highlight, so the button itself
+     doesn't paint a background that would fight with it. */
+  .tool-x[data-tool].active {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+  }
+  /* Select / Undo / Hint / Reset don't share the slider — keep their own
+     active background so they still highlight on activation. */
+  #select-btn-x.active {
+    background: var(--accent-soft);
     border-color: var(--accent);
   }
   .tool-x svg { color: currentColor; flex-shrink: 0; }
@@ -324,6 +517,53 @@
   }
   .na-x.done { opacity: 0.35; pointer-events: none; }
 
+  /* ===== COLOR ROW ===== */
+  .colors-x {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    align-items: center;
+    justify-content: center;
+  }
+  .colors-x.disabled .col-sw-x { opacity: 0.35; pointer-events: none; }
+  .col-sw-x {
+    all: unset;
+    cursor: pointer;
+    box-sizing: border-box;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--col-bg, var(--surface));
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.08s ease, box-shadow 0.12s ease;
+    touch-action: manipulation;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+  }
+  .col-sw-x:active { transform: scale(0.92); }
+  .col-sw-x.active {
+    box-shadow: 0 0 0 2px var(--accent), var(--shadow-sm);
+  }
+  .col-sw-x.none-x svg { display: block; }
+  /* Pencil-mark colors */
+  .ca-x .pen-x span.cm-red    { color: var(--col-red-fg); font-weight: 700; }
+  .ca-x .pen-x span.cm-orange { color: var(--col-orange-fg); font-weight: 700; }
+  .ca-x .pen-x span.cm-yellow { color: var(--col-yellow-fg); font-weight: 700; }
+  .ca-x .pen-x span.cm-green  { color: var(--col-green-fg); font-weight: 700; }
+  .ca-x .pen-x span.cm-blue   { color: var(--col-blue-fg); font-weight: 700; }
+  .ca-x .pen-x span.cm-purple { color: var(--col-purple-fg); font-weight: 700; }
+  /* Cell-bg colors. Use a low-opacity tint so cell content stays readable
+     and selection/peer highlights still register. */
+  .ca-x.cb-red    { background: var(--col-red-bg); }
+  .ca-x.cb-orange { background: var(--col-orange-bg); }
+  .ca-x.cb-yellow { background: var(--col-yellow-bg); }
+  .ca-x.cb-green  { background: var(--col-green-bg); }
+  .ca-x.cb-blue   { background: var(--col-blue-bg); }
+  .ca-x.cb-purple { background: var(--col-purple-bg); }
+
   /* ===== MODAL ===== */
   .modal-x {
     position: absolute;
@@ -347,9 +587,13 @@
     max-width: 340px;
     color: var(--text);
     box-shadow: var(--shadow-lg);
-    animation: modalUp 0.22s cubic-bezier(.2,.8,.4,1);
+    animation: modalUp 0.34s cubic-bezier(.34,1.56,.64,1);
   }
-  @keyframes modalUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes modalUp {
+    0%   { opacity: 0; transform: translateY(20px) scale(0.94); }
+    60%  { opacity: 1; transform: translateY(-4px) scale(1.02); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
   .modal-card-x h3 { margin: 0 0 4px; font-size: 17px; font-weight: 600; color: var(--text); }
   .modal-card-x p { margin: 0 0 14px; font-size: 13px; color: var(--muted); }
   .diff-opt-x {
@@ -1046,6 +1290,7 @@
     </div>
 
     <div class="tools-x">
+      <div class="tool-slide-x" id="tool-slide-x"></div>
       <button type="button" class="tool-x active" data-tool="pen">
         <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M11.5 1.3l3.2 3.2-9.4 9.4H2V10.7L11.5 1.3z"/></svg>
         <span>Pen</span>
@@ -1057,6 +1302,10 @@
       <button type="button" class="tool-x" data-tool="eraser">
         <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"><path d="M9.5 1.8l4.7 4.7L7 13.7H2.3L1 12.4l8.5-10.6z"/><path d="M5.5 9.7l4.8 4"/></svg>
         <span>Erase</span>
+      </button>
+      <button type="button" class="tool-x" id="select-btn-x">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="2 1.6"><rect x="2" y="2" width="12" height="12" rx="1"/></svg>
+        <span>Select</span>
       </button>
       <button type="button" class="tool-x disabled" id="undo-btn-x">
         <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.5h7.5a3.5 3.5 0 1 1 0 7H6.5"/><path d="M5 4L2.5 6.5 5 9"/></svg>
@@ -1074,6 +1323,18 @@
     </div>
 
     <div class="numpad-x" id="numpad-x"></div>
+
+    <div class="colors-x" id="colors-x">
+      <button type="button" class="col-sw-x none-x" data-col="none" aria-label="No color">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M3.8 12.2l8.4-8.4"/></svg>
+      </button>
+      <button type="button" class="col-sw-x" data-col="red"    style="--col-bg: var(--col-red-bg)"></button>
+      <button type="button" class="col-sw-x" data-col="orange" style="--col-bg: var(--col-orange-bg)"></button>
+      <button type="button" class="col-sw-x" data-col="yellow" style="--col-bg: var(--col-yellow-bg)"></button>
+      <button type="button" class="col-sw-x" data-col="green"  style="--col-bg: var(--col-green-bg)"></button>
+      <button type="button" class="col-sw-x" data-col="blue"   style="--col-bg: var(--col-blue-bg)"></button>
+      <button type="button" class="col-sw-x" data-col="purple" style="--col-bg: var(--col-purple-bg)"></button>
+    </div>
 
     <div class="hint-pop-x" id="hint-pop-x"></div>
     <div class="toast-x" id="toast-x"></div>
@@ -1243,6 +1504,8 @@
       solution: state.solution,
       values: state.values,
       pencils: state.pencils.map(row => row.map(set => Array.from(set))),
+      cellColors: state.cellColors ? state.cellColors.map(row => row.slice()) : null,
+      pencilColors: state.pencilColors ? state.pencilColors.map(row => row.map(map => Array.from(map.entries()))) : null,
       timerSec: state.timerSec,
       hintsUsed: state.hintsUsed,
       errorsMade: state.errorsMade,
@@ -1274,8 +1537,20 @@
     state.hintsUsed = typeof g.hintsUsed === "number" ? g.hintsUsed : 0;
     state.errorsMade = typeof g.errorsMade === "number" ? g.errorsMade : 0;
     state.didReset = !!g.didReset;
+    state.cellColors = g.cellColors
+      ? g.cellColors.map(row => row.slice())
+      : emptyCellColors();
+    state.pencilColors = g.pencilColors
+      ? g.pencilColors.map(row => row.map(pairs => new Map(Array.isArray(pairs) ? pairs : [])))
+      : emptyPencilColors();
+    state.activeColor = null;
+    state.lastColorTap = null;
+    state.completedUnits = { rows: new Set(), cols: new Set(), boxes: new Set() };
+    state.lastCorrect = null;
+    state.lastWrong = null;
     state.selected = null;
     state.multiCells = [];
+    state.selectMode = false;
     state.hint = null;
     state.won = false;
     state.lastPlaced = null;
@@ -1446,6 +1721,14 @@
     pencils: null,
     selected: null,
     multiCells: [],
+    selectMode: false,
+    cellColors: null,
+    pencilColors: null,
+    activeColor: null,
+    lastColorTap: null,
+    completedUnits: { rows: new Set(), cols: new Set(), boxes: new Set() },
+    lastCorrect: null,
+    lastWrong: null,
     tool: "pen",
     hint: null,
     toggles: { highlightConflict:true, highlightIncorrect:false, autoPencil:false, autoRemovePencil:true, highlightPeers:true, highlightSameNumber:true },
@@ -1465,6 +1748,8 @@
     state.history.push({
       values: state.values.map(r => r.slice()),
       pencils: state.pencils.map(row => row.map(set => Array.from(set))),
+      cellColors: state.cellColors ? state.cellColors.map(row => row.slice()) : null,
+      pencilColors: state.pencilColors ? state.pencilColors.map(row => row.map(map => Array.from(map.entries()))) : null,
       hintsUsed: state.hintsUsed,
       errorsMade: state.errorsMade,
       didReset: state.didReset
@@ -1477,15 +1762,21 @@
     const prev = state.history.pop();
     state.values = prev.values;
     state.pencils = prev.pencils.map(row => row.map(arr => new Set(arr)));
+    if (prev.cellColors) state.cellColors = prev.cellColors.map(row => row.slice());
+    if (prev.pencilColors) state.pencilColors = prev.pencilColors.map(row => row.map(pairs => new Map(pairs)));
     state.hintsUsed = prev.hintsUsed;
     state.errorsMade = prev.errorsMade;
     state.didReset = prev.didReset;
     if (state.hint) closeHintPop();
     render();
+    recomputeCompletedUnits();
   }
 
   function clone(b){ return b.map(r => r.slice()); }
   function emptyPencils(){ return Array.from({length:9}, () => Array.from({length:9}, () => new Set())); }
+  function emptyCellColors(){ return Array.from({length:9}, () => Array(9).fill(null)); }
+  function emptyPencilColors(){ return Array.from({length:9}, () => Array.from({length:9}, () => new Map())); }
+  const COLOR_IDS = ["red","orange","yellow","green","blue","purple"];
 
   function loadPuzzle(diff){
     const target = DIFF_TARGETS[diff] || 32;
@@ -1495,8 +1786,16 @@
     state.solution = solution;
     state.values = clone(puzzle);
     state.pencils = emptyPencils();
+    state.cellColors = emptyCellColors();
+    state.pencilColors = emptyPencilColors();
+    state.activeColor = null;
+    state.lastColorTap = null;
+    state.completedUnits = { rows: new Set(), cols: new Set(), boxes: new Set() };
+    state.lastCorrect = null;
+    state.lastWrong = null;
     state.selected = null;
     state.multiCells = [];
+    state.selectMode = false;
     state.hint = null;
     state.timerSec = 0;
     state.won = false;
@@ -2105,9 +2404,26 @@
     const selVal = sel ? state.values[sel.r][sel.c] : 0;
     const h = state.hint;
     const lp = state.lastPlaced;
+    const lc = state.lastCorrect;
+    const lw = state.lastWrong;
     const multi = state.multiCells || [];
     const multiSet = new Set(multi.map(p => p.r * 9 + p.c));
     const isMulti = multi.length > 1;
+    // Find the only remaining empty (user-fillable) cell, if any, for the
+    // last-cell-anticipation breathing animation.
+    let onlyEmpty = null;
+    let emptyCount = 0;
+    if (!h && !state.won){
+      for (let r = 0; r < 9 && emptyCount < 2; r++){
+        for (let c = 0; c < 9 && emptyCount < 2; c++){
+          if (state.board[r][c] === 0 && state.values[r][c] === 0){
+            emptyCount++;
+            onlyEmpty = { r, c };
+          }
+        }
+      }
+      if (emptyCount !== 1) onlyEmpty = null;
+    }
 
     for (let r=0;r<9;r++){
       for (let c=0;c<9;c++){
@@ -2136,9 +2452,15 @@
           else if (isPattern) cell.classList.add("hint-pattern");
           else if (isUnit) cell.classList.add("hint-unit");
         } else {
+          // User-applied cell color sits beneath selection/peer highlights.
+          const cb = state.cellColors && state.cellColors[r][c];
+          if (cb) cell.classList.add("cb-" + cb);
           if (isSel) cell.classList.add("sel");
           else if (isSame) cell.classList.add("same");
           else if (isPeer) cell.classList.add("peer");
+          if (onlyEmpty && onlyEmpty.r === r && onlyEmpty.c === c) cell.classList.add("last-empty");
+          if (lc && lc.r === r && lc.c === c) cell.classList.add("glow-correct");
+          if (lw && lw.r === r && lw.c === c) cell.classList.add("shake-wrong");
         }
 
         const v = state.values[r][c];
@@ -2157,11 +2479,15 @@
           const marks = new Set(userMarks);
           if (state.toggles.autoPencil) getCandidates(r, c).forEach(d => marks.add(d));
           if (marks.size > 0){
+            const colorMap = state.pencilColors && state.pencilColors[r][c];
             let html = `<div class="pen-x">`;
             for (let n=1; n<=9; n++){
               const has = marks.has(n);
               const hl = has && selVal !== 0 && n === selVal;
-              html += `<span${hl?' class="hl"':''}>${has ? n : ""}</span>`;
+              const colorId = has && colorMap ? colorMap.get(n) : null;
+              const cls = [hl ? "hl" : null, colorId ? "cm-" + colorId : null].filter(Boolean).join(" ");
+              const clsAttr = cls ? ` class="${cls}"` : "";
+              html += `<span${clsAttr}>${has ? n : ""}</span>`;
             }
             html += `</div>`;
             cell.innerHTML = html;
@@ -2170,18 +2496,200 @@
         grid.appendChild(cell);
       }
     }
-    // Clear lastPlaced after first render so animation only fires once
+    // Draw all grid lines as a single SVG overlay above cells. Thin first,
+    // thick second — thick block dividers naturally cover thin at crossings.
+    grid.appendChild(buildGridLines());
+    // Draw a single continuous perimeter around the selection as an SVG overlay
+    // on top of the grid lines.
+    if (!h){
+      const cells = multi.length ? multi : (sel ? [sel] : []);
+      if (cells.length){
+        const svg = buildSelectionOverlay(cells);
+        if (svg) grid.appendChild(svg);
+      }
+    }
+    // Clear one-shot animation flags so they only fire once.
     state.lastPlaced = null;
+    state.lastCorrect = null;
+    state.lastWrong = null;
+  }
+
+  // Build the static grid-lines SVG overlay. Drawing order: thin first, thick
+  // second, so thick block dividers always render on top of thin cell lines at
+  // T-intersections. Coordinates are in cell units (viewBox 0 0 9 9); strokes
+  // are non-scaling so widths stay 1px / 2px regardless of grid pixel size.
+  function buildGridLines(){
+    const NS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("class", "grid-lines-x");
+    svg.setAttribute("viewBox", "0 0 9 9");
+    svg.setAttribute("preserveAspectRatio", "none");
+    function line(x1, y1, x2, y2, stroke, w){
+      const el = document.createElementNS(NS, "line");
+      el.setAttribute("x1", x1); el.setAttribute("y1", y1);
+      el.setAttribute("x2", x2); el.setAttribute("y2", y2);
+      el.setAttribute("stroke", stroke);
+      el.setAttribute("stroke-width", w);
+      el.setAttribute("vector-effect", "non-scaling-stroke");
+      svg.appendChild(el);
+    }
+    for (let i = 1; i <= 8; i++){
+      if (i === 3 || i === 6) continue;
+      line(i, 0, i, 9, "var(--border-thin)", "1");
+      line(0, i, 9, i, "var(--border-thin)", "1");
+    }
+    for (const i of [3, 6]){
+      line(i, 0, i, 9, "var(--grid-thick)", "2");
+      line(0, i, 9, i, "var(--grid-thick)", "2");
+    }
+    return svg;
+  }
+
+  // Build an SVG overlay that traces the perimeter of the selected cells.
+  // Coordinates are in cell units (viewBox 0 0 9 9, preserveAspectRatio="none"),
+  // strokes use vector-effect=non-scaling-stroke to stay 2px regardless of size.
+  function buildSelectionOverlay(cells){
+    const setKey = new Set(cells.map(p => p.r*9 + p.c));
+    const has = (r, c) => r>=0 && r<9 && c>=0 && c<9 && setKey.has(r*9+c);
+    // Each segment is a directed edge in cell-grid coords (clockwise around its cell).
+    const segs = [];
+    for (const { r, c } of cells){
+      if (!has(r-1, c)) segs.push({ a:{x:c,   y:r  }, b:{x:c+1, y:r  } }); // top, →
+      if (!has(r, c+1)) segs.push({ a:{x:c+1, y:r  }, b:{x:c+1, y:r+1} }); // right, ↓
+      if (!has(r+1, c)) segs.push({ a:{x:c+1, y:r+1}, b:{x:c,   y:r+1} }); // bottom, ←
+      if (!has(r, c-1)) segs.push({ a:{x:c,   y:r+1}, b:{x:c,   y:r  } }); // left, ↑
+    }
+    if (!segs.length) return null;
+    // Stitch into closed loops by chaining b→a. At a vertex shared by more than
+    // one outgoing segment (e.g., two cells touching diagonally), pick the
+    // most-clockwise turn so each region's perimeter stays on its own loop
+    // instead of merging through the corner.
+    const startMap = new Map();
+    for (let i=0;i<segs.length;i++){
+      const k = segs[i].a.x + "," + segs[i].a.y;
+      if (!startMap.has(k)) startMap.set(k, []);
+      startMap.get(k).push(i);
+    }
+    const used = new Array(segs.length).fill(false);
+    const loops = [];
+    for (let i=0;i<segs.length;i++){
+      if (used[i]) continue;
+      const loop = [];
+      const startKey = segs[i].a.x + "," + segs[i].a.y;
+      let cur = i;
+      while (!used[cur]){
+        used[cur] = true;
+        loop.push(segs[cur].a);
+        const seg = segs[cur];
+        const tail = seg.b;
+        // Stop when we've returned to the loop's starting vertex. Without this
+        // an exhausted loop would chain into a neighboring (diagonally-touching)
+        // region's segments that happen to share a vertex.
+        if (loop.length > 1 && (tail.x + "," + tail.y) === startKey) break;
+        const cands = (startMap.get(tail.x + "," + tail.y) || []).filter(j => !used[j]);
+        if (cands.length === 0) break;
+        let next = cands[0];
+        if (cands.length > 1){
+          const dInX = tail.x - seg.a.x, dInY = tail.y - seg.a.y;
+          let bestCross = -Infinity;
+          for (const j of cands){
+            const dOutX = segs[j].b.x - segs[j].a.x;
+            const dOutY = segs[j].b.y - segs[j].a.y;
+            const cross = dInX * dOutY - dInY * dOutX;
+            if (cross > bestCross){ bestCross = cross; next = j; }
+          }
+        }
+        cur = next;
+      }
+      if (loop.length >= 3) loops.push(loop);
+    }
+    if (!loops.length) return null;
+    // Outline stroke is centered on the cell-edge line. The SVG is drawn on
+    // top of all cell borders (z-index:3), so it paints over thick and thin
+    // grid lines uniformly.
+    const R = 0.12; // small corner round, in cell units
+    const d = loops.map(loop => loopToRoundedPath(loop, R, 0)).join(" ");
+    const NS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("class", "sel-overlay-x");
+    svg.setAttribute("viewBox", "0 0 9 9");
+    svg.setAttribute("preserveAspectRatio", "none");
+    const path = document.createElementNS(NS, "path");
+    path.setAttribute("d", d);
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", "var(--accent)");
+    path.setAttribute("stroke-width", "2");
+    path.setAttribute("stroke-linejoin", "round");
+    path.setAttribute("stroke-linecap", "round");
+    path.setAttribute("vector-effect", "non-scaling-stroke");
+    svg.appendChild(path);
+    // Animate the outline drawing in only when the selection actually changed
+    // (not on every unrelated re-render). We measure the path length once it
+    // is in the DOM, then set stroke-dasharray + offset and add the class.
+    const newKey = cells.map(p => p.r * 9 + p.c).sort().join(",");
+    if (newKey !== _prevSelKey){
+      _prevSelKey = newKey;
+      requestAnimationFrame(() => {
+        try {
+          const len = path.getTotalLength();
+          path.style.setProperty("--sel-len", len);
+          path.classList.add("draw-in");
+        } catch(_) {}
+      });
+    }
+    return svg;
+  }
+  let _prevSelKey = "";
+
+  function loopToRoundedPath(loop, r, inset){
+    const n = loop.length;
+    if (n < 3) return "";
+    const sgn = (v) => v > 0 ? 1 : (v < 0 ? -1 : 0);
+    const parts = [];
+    for (let i=0;i<n;i++){
+      const prev = loop[(i - 1 + n) % n];
+      const cur  = loop[i];
+      const next = loop[(i + 1) % n];
+      const dx1 = sgn(cur.x  - prev.x), dy1 = sgn(cur.y  - prev.y);
+      const dx2 = sgn(next.x - cur.x ), dy2 = sgn(next.y - cur.y );
+      // Walking clockwise around the region, the region is on our right. The
+      // right-perpendicular of (dx, dy) is (-dy, dx). For a 90° corner we sum
+      // the incoming and outgoing right-perps (intersection of the two
+      // offset lines). For a straight-line vertex (d1 == d2) — common where
+      // two adjacent cells both contribute a top/bottom/side segment — we'd
+      // double the inset, so collapse to a single perpendicular contribution.
+      const straight = (dx1 === dx2 && dy1 === dy2);
+      const offX = straight ? -dy1 : (-dy1 - dy2);
+      const offY = straight ?  dx1 : ( dx1 + dx2);
+      const cx = cur.x + offX * inset;
+      const cy = cur.y + offY * inset;
+      const inX  = cx - dx1 * r, inY  = cy - dy1 * r;
+      const outX = cx + dx2 * r, outY = cy + dy2 * r;
+      parts.push(i === 0 ? `M ${inX} ${inY}` : `L ${inX} ${inY}`);
+      parts.push(`Q ${cx} ${cy} ${outX} ${outY}`);
+    }
+    parts.push("Z");
+    return parts.join(" ");
   }
 
   function renderTools(){
     document.querySelectorAll(".tool-x[data-tool]").forEach(el => {
       el.classList.toggle("active", el.dataset.tool === state.tool);
     });
+    const selBtn = document.getElementById("select-btn-x");
+    if (selBtn) selBtn.classList.toggle("active", !!state.selectMode);
     const undoBtn = document.getElementById("undo-btn-x");
     if (undoBtn) undoBtn.classList.toggle("disabled", state.history.length === 0 || state.won);
+    updateToolSlider();
+    // Mark the slider as ready after the first paint so the initial position
+    // is set without an opacity flash.
+    const slider = document.getElementById("tool-slide-x");
+    if (slider && !slider.classList.contains("ready")){
+      requestAnimationFrame(() => slider.classList.add("ready"));
+    }
   }
 
+  let _prevDoneDigits = new Set();
   function renderNumpad(){
     const pad = document.getElementById("numpad-x");
     pad.innerHTML = "";
@@ -2191,12 +2699,22 @@
       const v = state.values[r][c];
       if (v !== 0) counts[v]--;
     }
+    // Detect digits that just transitioned from "remaining" to "done" so we
+    // can play the green-flash + checkmark animation on them this render.
+    const newDone = new Set();
+    for (let d = 1; d <= 9; d++) if (counts[d] <= 0) newDone.add(d);
+    const justDone = new Set();
+    for (const d of newDone) if (!_prevDoneDigits.has(d)) justDone.add(d);
+    _prevDoneDigits = newDone;
     for (let n=1; n<=9; n++){
       const b = document.createElement("button");
       b.type = "button";
-      b.className = "na-x" + (counts[n] <= 0 ? " done" : "");
+      const cls = ["na-x"];
+      if (counts[n] <= 0) cls.push("done");
+      if (justDone.has(n)) cls.push("just-done");
+      b.className = cls.join(" ");
       b.dataset.digit = n;
-      b.innerHTML = `<span class="nv">${n}</span><span class="nc">${Math.max(0, counts[n])}</span>`;
+      b.innerHTML = `<span class="nv">${n}</span><span class="nc">${Math.max(0, counts[n])}</span><span class="check-mark">✓</span>`;
       pad.appendChild(b);
     }
     const clr = document.createElement("button");
@@ -2233,9 +2751,157 @@
     renderGrid();
     renderTools();
     renderNumpad();
+    renderColors();
     renderHeader();
     saveGame();
     scheduleHintCheck();
+  }
+
+  // ===== Animations =====
+  function isRowMatchingSolution(r){
+    for (let c = 0; c < 9; c++){
+      if (state.values[r][c] !== state.solution[r][c]) return false;
+    }
+    return true;
+  }
+  function isColMatchingSolution(c){
+    for (let r = 0; r < 9; r++){
+      if (state.values[r][c] !== state.solution[r][c]) return false;
+    }
+    return true;
+  }
+  function isBoxMatchingSolution(b){
+    const br = Math.floor(b/3)*3, bc = (b%3)*3;
+    for (let i=0;i<3;i++) for (let j=0;j<3;j++){
+      if (state.values[br+i][bc+j] !== state.solution[br+i][bc+j]) return false;
+    }
+    return true;
+  }
+  function recomputeCompletedUnits(){
+    const sets = { rows: new Set(), cols: new Set(), boxes: new Set() };
+    for (let i = 0; i < 9; i++){
+      if (isRowMatchingSolution(i)) sets.rows.add(i);
+      if (isColMatchingSolution(i)) sets.cols.add(i);
+      if (isBoxMatchingSolution(i)) sets.boxes.add(i);
+    }
+    state.completedUnits = sets;
+  }
+  // Detect units that just completed since the last check, return them so the
+  // caller can play the wave animation, and update state.completedUnits.
+  function diffCompletedUnits(){
+    const old = state.completedUnits || { rows: new Set(), cols: new Set(), boxes: new Set() };
+    const fresh = { rows: new Set(), cols: new Set(), boxes: new Set() };
+    const justNew = { rows: [], cols: [], boxes: [] };
+    for (let i = 0; i < 9; i++){
+      if (isRowMatchingSolution(i)){ fresh.rows.add(i); if (!old.rows.has(i)) justNew.rows.push(i); }
+      if (isColMatchingSolution(i)){ fresh.cols.add(i); if (!old.cols.has(i)) justNew.cols.push(i); }
+      if (isBoxMatchingSolution(i)){ fresh.boxes.add(i); if (!old.boxes.has(i)) justNew.boxes.push(i); }
+    }
+    state.completedUnits = fresh;
+    return justNew;
+  }
+  // Play a green wave across a row/col/box. Adding the `wave` class triggers
+  // the keyframed flash; cells are staggered via inline animation-delay. We
+  // remove the class after the animation finishes so the cells return cleanly
+  // to their normal state and the animation can replay later.
+  function animateUnit(type, idx){
+    const grid = document.getElementById("grid-x");
+    if (!grid) return;
+    let cells = [];
+    if (type === "row"){
+      for (let c = 0; c < 9; c++) cells.push(grid.children[idx * 9 + c]);
+    } else if (type === "col"){
+      for (let r = 0; r < 9; r++) cells.push(grid.children[r * 9 + idx]);
+    } else {
+      const br = Math.floor(idx/3)*3, bc = (idx%3)*3;
+      const list = [];
+      for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++){
+        const d = Math.max(Math.abs(i-1), Math.abs(j-1));
+        list.push({ d, el: grid.children[(br+i)*9 + (bc+j)] });
+      }
+      list.sort((a, b) => a.d - b.d);
+      cells = list.map(x => x.el);
+    }
+    cells = cells.filter(Boolean);
+    cells.forEach((cell, i) => {
+      cell.style.animationDelay = (i * 0.05) + "s";
+      // Restart the animation cleanly if the class is already present.
+      cell.classList.remove("wave");
+      void cell.offsetWidth;
+      cell.classList.add("wave");
+    });
+    const totalMs = 600 + cells.length * 50 + 50;
+    setTimeout(() => {
+      cells.forEach(cell => {
+        cell.classList.remove("wave");
+        cell.style.animationDelay = "";
+      });
+    }, totalMs);
+  }
+  function animatePendingUnitCompletions(){
+    const just = diffCompletedUnits();
+    for (const r of just.rows) animateUnit("row", r);
+    for (const c of just.cols) animateUnit("col", c);
+    for (const b of just.boxes) animateUnit("box", b);
+  }
+  function animateWinCascade(){
+    const grid = document.getElementById("grid-x");
+    if (!grid) return;
+    const cells = grid.querySelectorAll(".ca-x");
+    cells.forEach(cell => {
+      const r = +cell.dataset.r, c = +cell.dataset.c;
+      const d = Math.max(Math.abs(r - 4), Math.abs(c - 4));
+      cell.style.animationDelay = (d * 0.08) + "s";
+      cell.classList.remove("cascade");
+      void cell.offsetWidth;
+      cell.classList.add("cascade");
+    });
+    setTimeout(() => {
+      cells.forEach(cell => {
+        cell.classList.remove("cascade");
+        cell.style.animationDelay = "";
+      });
+    }, 1500);
+  }
+  // Brief expanding-ring effect on cells that just got a color applied. We
+  // schedule for the frame after render so we read the freshly-rendered cells.
+  function flashColorRipple(targets){
+    if (!targets || !targets.length) return;
+    requestAnimationFrame(() => {
+      const grid = document.getElementById("grid-x");
+      if (!grid) return;
+      const els = targets.map(({ r, c }) => grid.children[r * 9 + c]).filter(Boolean);
+      els.forEach(el => {
+        el.classList.remove("ripple");
+        void el.offsetWidth;
+        el.classList.add("ripple");
+      });
+      setTimeout(() => els.forEach(el => el.classList.remove("ripple")), 500);
+    });
+  }
+  // Animate an integer count from 0 → target on a stats DOM element.
+  function animateCountUp(el, target, durationMs){
+    if (!el) return;
+    const start = performance.now();
+    function frame(now){
+      const t = Math.min(1, (now - start) / durationMs);
+      const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
+      el.textContent = Math.round(target * eased);
+      if (t < 1) requestAnimationFrame(frame);
+      else el.textContent = target;
+    }
+    requestAnimationFrame(frame);
+  }
+  // Position the active-tool slider behind the active pen/pencil/eraser so the
+  // active highlight visually slides between buttons instead of jumping.
+  function updateToolSlider(){
+    const slider = document.getElementById("tool-slide-x");
+    const active = document.querySelector(`.tool-x[data-tool="${state.tool}"]`);
+    if (!slider || !active) return;
+    slider.style.left = active.offsetLeft + "px";
+    slider.style.top = active.offsetTop + "px";
+    slider.style.width = active.offsetWidth + "px";
+    slider.style.height = active.offsetHeight + "px";
   }
 
   function placeNumber(digit){
@@ -2251,8 +2917,14 @@
         pushHistory();
         const allHave = targets.every(({r, c}) => state.pencils[r][c].has(digit));
         for (const {r, c} of targets){
-          if (allHave) state.pencils[r][c].delete(digit);
-          else state.pencils[r][c].add(digit);
+          if (allHave){
+            state.pencils[r][c].delete(digit);
+            state.pencilColors[r][c].delete(digit);
+          } else {
+            state.pencils[r][c].add(digit);
+            if (state.activeColor) state.pencilColors[r][c].set(digit, state.activeColor);
+            else state.pencilColors[r][c].delete(digit);
+          }
         }
         if (state.hint) closeHintPop();
         render();
@@ -2270,7 +2942,20 @@
         pushHistory();
         state.values[r][c] = digit;
         state.lastPlaced = { r, c };
-        if (state.solution[r][c] !== digit) state.errorsMade++;
+        if (state.solution[r][c] === digit){
+          // Suppress the "correct" green glow when this placement also
+          // completes a row/col/box — the wave animation is already louder.
+          const b = Math.floor(r/3)*3 + Math.floor(c/3);
+          const completesRow = isRowMatchingSolution(r) && !state.completedUnits.rows.has(r);
+          const completesCol = isColMatchingSolution(c) && !state.completedUnits.cols.has(c);
+          const completesBox = isBoxMatchingSolution(b) && !state.completedUnits.boxes.has(b);
+          if (!completesRow && !completesCol && !completesBox){
+            state.lastCorrect = { r, c };
+          }
+        } else {
+          state.errorsMade++;
+          state.lastWrong = { r, c };
+        }
         if (state.toggles.autoRemovePencil){
           for (let i=0;i<9;i++){
             state.pencils[r][i].delete(digit);
@@ -2284,11 +2969,24 @@
       if (state.values[r][c] !== 0) return;
       pushHistory();
       const set = state.pencils[r][c];
-      if (set.has(digit)) set.delete(digit); else set.add(digit);
+      if (set.has(digit)){
+        set.delete(digit);
+        state.pencilColors[r][c].delete(digit);
+      } else {
+        set.add(digit);
+        if (state.activeColor) state.pencilColors[r][c].set(digit, state.activeColor);
+        else state.pencilColors[r][c].delete(digit);
+      }
     }
     if (state.hint) closeHintPop();
     render();
-    if (isComplete()) handleWin();
+    if (isComplete()){
+      // Sync the tracked completion set silently — cascade is enough.
+      diffCompletedUnits();
+      handleWin();
+    } else {
+      animatePendingUnitCompletions();
+    }
   }
 
   function eraseCell(r, c){
@@ -2316,6 +3014,127 @@
     }
     if (state.hint) closeHintPop();
     render();
+    recomputeCompletedUnits();
+  }
+
+  // ===== Colors =====
+  function colorsEnabled(){
+    return state.tool === "pencil" || state.selectMode;
+  }
+  function handleColorTap(colorId){
+    if (state.won) return;
+    if (!colorsEnabled()) return;
+    // Brief tap-feedback on the swatch itself.
+    const swatchEl = document.querySelector(`.col-sw-x[data-col="${colorId === null ? "none" : colorId}"]`);
+    if (swatchEl){
+      swatchEl.classList.remove("just-tapped");
+      void swatchEl.offsetWidth;
+      swatchEl.classList.add("just-tapped");
+      setTimeout(() => swatchEl.classList.remove("just-tapped"), 240);
+    }
+    const inPencil = state.tool === "pencil";
+    const inSelect = state.selectMode;
+    const targets = (state.multiCells && state.multiCells.length)
+      ? state.multiCells.slice()
+      : (state.selected ? [state.selected] : []);
+
+    // Pencil-only mode: arm/disarm activeColor for future pencil placements.
+    // The "no color" swatch always disarms.
+    if (inPencil && !inSelect){
+      if (colorId === null){
+        state.activeColor = null;
+      } else {
+        state.activeColor = (state.activeColor === colorId) ? null : colorId;
+      }
+      state.lastColorTap = null;
+      render();
+      return;
+    }
+
+    // Select-only mode: apply color to selected cells' background immediately.
+    if (!inPencil && inSelect){
+      if (targets.length === 0){
+        state.activeColor = colorId;
+        state.lastColorTap = null;
+        render();
+        return;
+      }
+      pushHistory();
+      for (const { r, c } of targets){
+        state.cellColors[r][c] = colorId; // null clears
+      }
+      state.activeColor = colorId;
+      state.lastColorTap = null;
+      render();
+      flashColorRipple(targets);
+      return;
+    }
+
+    // Pencil + Select: tap-cycle on selected cells. With no selection, arm.
+    if (targets.length === 0){
+      if (colorId === null){
+        state.activeColor = null;
+      } else {
+        state.activeColor = (state.activeColor === colorId) ? null : colorId;
+      }
+      state.lastColorTap = null;
+      render();
+      return;
+    }
+
+    if (colorId === null){
+      pushHistory();
+      for (const { r, c } of targets){
+        state.cellColors[r][c] = null;
+        state.pencilColors[r][c].clear();
+      }
+      state.activeColor = null;
+      state.lastColorTap = null;
+      render();
+      flashColorRipple(targets);
+      return;
+    }
+
+    // Cycle 1 (cells only) → 2 (pencils only) → 3 (both) → 1 …
+    let count = 1;
+    if (state.lastColorTap && state.lastColorTap.color === colorId){
+      count = (state.lastColorTap.count % 3) + 1;
+    }
+    pushHistory();
+    if (count === 1){
+      for (const { r, c } of targets){
+        state.cellColors[r][c] = colorId;
+        state.pencilColors[r][c].clear();
+      }
+    } else if (count === 2){
+      for (const { r, c } of targets){
+        state.cellColors[r][c] = null;
+        for (const d of state.pencils[r][c]){
+          state.pencilColors[r][c].set(d, colorId);
+        }
+      }
+    } else {
+      for (const { r, c } of targets){
+        state.cellColors[r][c] = colorId;
+        for (const d of state.pencils[r][c]){
+          state.pencilColors[r][c].set(d, colorId);
+        }
+      }
+    }
+    state.activeColor = colorId;
+    state.lastColorTap = { color: colorId, count };
+    render();
+    flashColorRipple(targets);
+  }
+  function renderColors(){
+    const row = document.getElementById("colors-x");
+    if (!row) return;
+    row.classList.toggle("disabled", !colorsEnabled());
+    for (const btn of row.querySelectorAll(".col-sw-x")){
+      const id = btn.dataset.col === "none" ? null : btn.dataset.col;
+      const isActive = id !== null && state.activeColor === id;
+      btn.classList.toggle("active", !!isActive);
+    }
   }
 
   function showToast(msg){
@@ -2584,9 +3403,9 @@
     html += `<div class="drawer-section-x">
       <p class="drawer-label-x">Overview</p>
       <div class="stats-overview-x">
-        <div class="stats-card-x"><div class="num">${c.totalCount}</div><div class="lbl">Solved</div></div>
+        <div class="stats-card-x"><div class="num" data-count="${c.totalCount}">0</div><div class="lbl">Solved</div></div>
         <div class="stats-card-x"><div class="num">${fmtTimeShort(c.totalTime)}</div><div class="lbl">Total time</div></div>
-        <div class="stats-card-x"><div class="num">${c.perfectCount}</div><div class="lbl">Flawless</div></div>
+        <div class="stats-card-x"><div class="num" data-count="${c.perfectCount}">0</div><div class="lbl">Flawless</div></div>
       </div>
     </div>`;
 
@@ -2633,6 +3452,13 @@
 
     body.innerHTML = html;
 
+    // Count-up the overview integers from 0 → final value when stats open.
+    body.querySelectorAll("[data-count]").forEach(el => {
+      const target = parseInt(el.dataset.count, 10);
+      if (!isNaN(target) && target > 0) animateCountUp(el, target, 650);
+      else el.textContent = isNaN(target) ? el.dataset.count : target;
+    });
+
     const clearBtn = document.getElementById("stats-clear-x");
     if (clearBtn){
       clearBtn.addEventListener("click", () => {
@@ -2648,8 +3474,16 @@
     pushHistory();
     state.values = clone(state.board);
     state.pencils = emptyPencils();
+    state.cellColors = emptyCellColors();
+    state.pencilColors = emptyPencilColors();
+    state.activeColor = null;
+    state.lastColorTap = null;
+    state.completedUnits = { rows: new Set(), cols: new Set(), boxes: new Set() };
+    state.lastCorrect = null;
+    state.lastWrong = null;
     state.selected = null;
     state.multiCells = [];
+    state.selectMode = false;
     state.won = false;
     state.didReset = true;
     closeHintPop();
@@ -2693,7 +3527,12 @@
     document.getElementById("win-sub-x").textContent = isPerfect
       ? "Flawless — no hints, no errors."
       : `${state.hintsUsed} hint${state.hintsUsed === 1 ? "" : "s"}, ${state.errorsMade} error${state.errorsMade === 1 ? "" : "s"}.`;
-    document.getElementById("modal-win-x").classList.add("open");
+    // Play the cascade across the just-finished grid first, then bounce in
+    // the win modal so the player sees the celebration before the dialog.
+    animateWinCascade();
+    setTimeout(() => {
+      document.getElementById("modal-win-x").classList.add("open");
+    }, 850);
   }
 
   function setLoading(on){
@@ -2748,12 +3587,29 @@
   let dragErase = false;
   let dragSelect = false;
   let eraseStrokeUsedHistory = false;
+  // For tap-vs-drag in select mode: a tap on an already-selected cell toggles it
+  // off; a drag never deselects (only adds). We commit toggle decisions on
+  // pointerup once we know whether motion happened.
+  let tapStartCell = null;
+  let tapStartWasInSet = false;
+  let tapHadMotion = false;
   function addToMultiCells(r, c){
     for (const cell of state.multiCells){
       if (cell.r === r && cell.c === c) return false;
     }
     state.multiCells.push({ r, c });
     return true;
+  }
+  function removeFromMultiCells(r, c){
+    const idx = state.multiCells.findIndex(p => p.r === r && p.c === c);
+    if (idx === -1) return false;
+    state.multiCells.splice(idx, 1);
+    return true;
+  }
+  function exitSelectMode(){
+    state.selectMode = false;
+    if (state.selected) state.multiCells = [{ r: state.selected.r, c: state.selected.c }];
+    else state.multiCells = [];
   }
   function setupHandlers(){
     const grid = document.getElementById("grid-x");
@@ -2767,13 +3623,27 @@
         try { grid.setPointerCapture(e.pointerId); } catch(_){}
         eraseCell(r, c);
         render();
+        return;
+      }
+      if (state.selectMode){
+        // Drag adds; tap toggles. We provisionally add on pointerdown and let
+        // pointerup decide whether this gesture was a tap (and thus a toggle
+        // on an already-selected cell).
+        tapStartCell = { r, c };
+        tapStartWasInSet = state.multiCells.some(p => p.r === r && p.c === c);
+        tapHadMotion = false;
+        if (!tapStartWasInSet) addToMultiCells(r, c);
+        state.selected = { r, c };
       } else {
+        // Replace selection on each fresh interaction. Drag will multi-select
+        // within this stroke; on release the multi persists, but the next
+        // single click in non-select mode replaces it.
         state.selected = { r, c };
         state.multiCells = [{ r, c }];
-        dragSelect = true;
-        try { grid.setPointerCapture(e.pointerId); } catch(_){}
-        render();
       }
+      dragSelect = true;
+      try { grid.setPointerCapture(e.pointerId); } catch(_){}
+      render();
     });
     grid.addEventListener("pointermove", (e) => {
       if (dragErase){
@@ -2790,10 +3660,30 @@
         const cell = el && el.closest && el.closest(".ca-x");
         if (!cell || !grid.contains(cell)) return;
         const r = parseInt(cell.dataset.r, 10), c = parseInt(cell.dataset.c, 10);
+        if (state.selectMode && tapStartCell && (r !== tapStartCell.r || c !== tapStartCell.c)){
+          tapHadMotion = true;
+        }
         if (addToMultiCells(r, c)) render();
       }
     });
-    const stop = () => { dragErase = false; dragSelect = false; };
+    const stop = () => {
+      // Resolve a select-mode tap on an already-selected cell as a toggle-off.
+      if (state.selectMode && dragSelect && tapStartCell && tapStartWasInSet && !tapHadMotion){
+        removeFromMultiCells(tapStartCell.r, tapStartCell.c);
+        if (state.multiCells.length){
+          const last = state.multiCells[state.multiCells.length - 1];
+          state.selected = { r: last.r, c: last.c };
+        } else {
+          state.selected = null;
+        }
+        render();
+      }
+      tapStartCell = null;
+      tapStartWasInSet = false;
+      tapHadMotion = false;
+      dragErase = false;
+      dragSelect = false;
+    };
     document.addEventListener("pointerup", stop);
     document.addEventListener("pointercancel", stop);
 
@@ -2810,8 +3700,33 @@
     document.querySelectorAll(".tool-x[data-tool]").forEach(el => {
       el.addEventListener("click", () => {
         state.tool = el.dataset.tool;
-        renderTools();
+        if (state.selectMode) exitSelectMode();
+        // Quick pop on the just-activated button for tactile feedback.
+        el.classList.remove("just-activated");
+        void el.offsetWidth;
+        el.classList.add("just-activated");
+        setTimeout(() => el.classList.remove("just-activated"), 240);
+        render();
       });
+    });
+    document.getElementById("colors-x").addEventListener("click", (e) => {
+      const b = e.target.closest(".col-sw-x");
+      if (!b) return;
+      const id = b.dataset.col === "none" ? null : b.dataset.col;
+      handleColorTap(id);
+    });
+    document.getElementById("select-btn-x").addEventListener("click", () => {
+      if (state.selectMode){
+        exitSelectMode();
+      } else {
+        state.selectMode = true;
+        // Preserve any existing multi-cell selection (e.g., from a prior drag).
+        // Only seed from the anchor when there's nothing selected yet.
+        if (!state.multiCells.length && state.selected){
+          state.multiCells = [{ r: state.selected.r, c: state.selected.c }];
+        }
+      }
+      render();
     });
     document.getElementById("hint-btn-x").addEventListener("click", showHint);
     document.getElementById("reset-btn-x").addEventListener("click", requestReset);
@@ -2934,6 +3849,7 @@
           state.pencils[r][c].clear();
         }
         render();
+        recomputeCompletedUnits();
       } else if (state.selected){
         let { r, c } = state.selected;
         if (e.key === "ArrowUp") r = Math.max(0, r-1);
@@ -2943,6 +3859,7 @@
         else return;
         state.selected = { r, c };
         state.multiCells = [{ r, c }];
+        state.selectMode = false;
         render();
       }
     });
@@ -3638,6 +4555,7 @@
     const saved = loadGame();
     if (saved){
       restoreGame(saved);
+      recomputeCompletedUnits();
       document.getElementById("timer-x").textContent = fmtTime(state.timerSec);
       render();
       setLoading(false);
@@ -3652,6 +4570,7 @@
 
   // Flush state before the page is hidden / closed (especially on mobile).
   window.addEventListener("pagehide", saveGame);
+  window.addEventListener("resize", () => updateToolSlider());
   window.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") saveGame();
   });
