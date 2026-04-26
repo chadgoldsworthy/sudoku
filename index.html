@@ -212,6 +212,7 @@
   .ca-x.same { background: var(--accent-mid); }
   .ca-x.sel { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); z-index: 1; }
   .ca-x.hint-unit { background: var(--hint-unit); }
+  .ca-x.hint-pattern { background: var(--hint-cell); box-shadow: inset 0 0 0 1px var(--hint); }
   .ca-x.hint-focus { background: var(--hint-cell); box-shadow: inset 0 0 0 2px var(--hint); z-index: 1; }
   .ca-x .v { color: var(--text); }
   .ca-x .u { color: var(--user); font-weight: 600; }
@@ -1309,51 +1310,395 @@
     return true;
   }
 
-  function findHint(){
+  // ===== Hint solver: candidates + techniques =====
+  const ROW_UNIT_CELLS = Array.from({length:9}, (_,r) => Array.from({length:9}, (_,c) => ({r, c})));
+  const COL_UNIT_CELLS = Array.from({length:9}, (_,c) => Array.from({length:9}, (_,r) => ({r, c})));
+  const BOX_UNIT_CELLS = Array.from({length:9}, (_,bi) => {
+    const out = []; const br = Math.floor(bi/3)*3, bc = (bi%3)*3;
+    for (let i=0;i<3;i++) for (let j=0;j<3;j++) out.push({r:br+i, c:bc+j});
+    return out;
+  });
+  const ALL_UNITS = [
+    ...ROW_UNIT_CELLS.map((cells, idx) => ({ type:"row", idx, cells })),
+    ...COL_UNIT_CELLS.map((cells, idx) => ({ type:"col", idx, cells })),
+    ...BOX_UNIT_CELLS.map((cells, idx) => ({ type:"box", idx, cells })),
+  ];
+  function computeCandidates(values){
+    const map = Array.from({length:9}, () => Array.from({length:9}, () => new Set()));
     for (let r=0;r<9;r++) for (let c=0;c<9;c++){
-      if (state.values[r][c] === 0){
-        const cands = getCandidates(r, c);
-        if (cands.length === 1) return { type:"naked", r, c, digit:cands[0] };
-      }
+      if (values[r][c] !== 0) continue;
+      const used = new Set();
+      for (let i=0;i<9;i++){ used.add(values[r][i]); used.add(values[i][c]); }
+      const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
+      for (let i=0;i<3;i++) for (let j=0;j<3;j++) used.add(values[br+i][bc+j]);
+      for (let d=1; d<=9; d++) if (!used.has(d)) map[r][c].add(d);
     }
-    for (let r=0;r<9;r++){
-      const inRow = new Set(state.values[r]);
-      for (let d=1; d<=9; d++){
-        if (inRow.has(d)) continue;
-        const positions = [];
-        for (let c=0;c<9;c++){
-          if (state.values[r][c] === 0 && getCandidates(r, c).indexOf(d) >= 0) positions.push(c);
-        }
-        if (positions.length === 1) return { type:"row", r, c:positions[0], digit:d, unitIdx:r };
-      }
-    }
-    for (let c=0;c<9;c++){
-      const inCol = new Set();
-      for (let r=0;r<9;r++) inCol.add(state.values[r][c]);
-      for (let d=1; d<=9; d++){
-        if (inCol.has(d)) continue;
-        const positions = [];
-        for (let r=0;r<9;r++){
-          if (state.values[r][c] === 0 && getCandidates(r, c).indexOf(d) >= 0) positions.push(r);
-        }
-        if (positions.length === 1) return { type:"col", r:positions[0], c, digit:d, unitIdx:c };
-      }
-    }
-    for (let bi=0; bi<9; bi++){
-      const br = Math.floor(bi/3)*3, bc = (bi%3)*3;
-      const inBox = new Set();
-      for (let i=0;i<3;i++) for (let j=0;j<3;j++) inBox.add(state.values[br+i][bc+j]);
-      for (let d=1; d<=9; d++){
-        if (inBox.has(d)) continue;
-        const positions = [];
-        for (let i=0;i<3;i++) for (let j=0;j<3;j++){
-          const r = br+i, c = bc+j;
-          if (state.values[r][c] === 0 && getCandidates(r, c).indexOf(d) >= 0) positions.push({r, c});
-        }
-        if (positions.length === 1) return { type:"box", r:positions[0].r, c:positions[0].c, digit:d, unitIdx:bi };
+    return map;
+  }
+  function cloneCandidates(map){ return map.map(row => row.map(set => new Set(set))); }
+  function setsEqual(a, b){ if (a.size !== b.size) return false; for (const v of a) if (!b.has(v)) return false; return true; }
+
+  function findNakedSingleInMap(map){
+    for (let r=0;r<9;r++) for (let c=0;c<9;c++){
+      if (map[r][c].size === 1){
+        return { type:"naked", r, c, digit: map[r][c].values().next().value };
       }
     }
     return null;
+  }
+  function findHiddenSingleInMap(map){
+    for (const u of ALL_UNITS){
+      for (let d=1; d<=9; d++){
+        const ps = [];
+        for (const { r, c } of u.cells) if (map[r][c].has(d)) ps.push({ r, c });
+        if (ps.length === 1) return { type: u.type, r: ps[0].r, c: ps[0].c, digit: d, unitIdx: u.idx };
+      }
+    }
+    return null;
+  }
+  function findSinglesInMap(map){
+    return findNakedSingleInMap(map) || findHiddenSingleInMap(map);
+  }
+
+  // Each technique below returns an array of all patterns it finds (each with non-empty eliminations).
+  // The orchestrator tries them in difficulty order and picks the first whose eliminations yield a single.
+
+  // Pointing: a digit's candidates within a box are confined to one row or column → clear it from rest of that line.
+  function findAllPointing(map){
+    const out = [];
+    for (let bi=0; bi<9; bi++){
+      const cells = BOX_UNIT_CELLS[bi];
+      for (let d=1; d<=9; d++){
+        const ps = cells.filter(({r,c}) => map[r][c].has(d));
+        if (ps.length < 2 || ps.length > 3) continue;
+        const sameRow = ps.every(p => p.r === ps[0].r);
+        const sameCol = ps.every(p => p.c === ps[0].c);
+        if (sameRow){
+          const r = ps[0].r;
+          const elims = [];
+          for (let c=0;c<9;c++){
+            if (Math.floor(c/3)*3 === Math.floor(ps[0].c/3)*3) continue;
+            if (map[r][c].has(d)) elims.push({ r, c, digit: d });
+          }
+          if (elims.length) out.push({ technique:"pointing", patternCells: ps.slice(), patternDigit: d, patternUnit: { type:"box", idx: bi }, lineUnit: { type:"row", idx: r }, eliminations: elims });
+        } else if (sameCol){
+          const c = ps[0].c;
+          const elims = [];
+          for (let r=0;r<9;r++){
+            if (Math.floor(r/3)*3 === Math.floor(ps[0].r/3)*3) continue;
+            if (map[r][c].has(d)) elims.push({ r, c, digit: d });
+          }
+          if (elims.length) out.push({ technique:"pointing", patternCells: ps.slice(), patternDigit: d, patternUnit: { type:"box", idx: bi }, lineUnit: { type:"col", idx: c }, eliminations: elims });
+        }
+      }
+    }
+    return out;
+  }
+
+  // Box/line reduction: a digit's candidates within a row/col are confined to one box → clear it from rest of that box.
+  function findAllBoxLine(map){
+    const out = [];
+    for (let r=0;r<9;r++){
+      for (let d=1; d<=9; d++){
+        const ps = [];
+        for (let c=0;c<9;c++) if (map[r][c].has(d)) ps.push({ r, c });
+        if (ps.length < 2 || ps.length > 3) continue;
+        const boxCols = new Set(ps.map(p => Math.floor(p.c/3)));
+        if (boxCols.size !== 1) continue;
+        const bi = Math.floor(r/3)*3 + Math.floor(ps[0].c/3);
+        const elims = [];
+        for (const { r: br, c: bc } of BOX_UNIT_CELLS[bi]){
+          if (br === r) continue;
+          if (map[br][bc].has(d)) elims.push({ r: br, c: bc, digit: d });
+        }
+        if (elims.length) out.push({ technique:"box-line", patternCells: ps.slice(), patternDigit: d, patternUnit: { type:"row", idx: r }, lineUnit: { type:"box", idx: bi }, eliminations: elims });
+      }
+    }
+    for (let c=0;c<9;c++){
+      for (let d=1; d<=9; d++){
+        const ps = [];
+        for (let r=0;r<9;r++) if (map[r][c].has(d)) ps.push({ r, c });
+        if (ps.length < 2 || ps.length > 3) continue;
+        const boxRows = new Set(ps.map(p => Math.floor(p.r/3)));
+        if (boxRows.size !== 1) continue;
+        const bi = Math.floor(ps[0].r/3)*3 + Math.floor(c/3);
+        const elims = [];
+        for (const { r: br, c: bc } of BOX_UNIT_CELLS[bi]){
+          if (bc === c) continue;
+          if (map[br][bc].has(d)) elims.push({ r: br, c: bc, digit: d });
+        }
+        if (elims.length) out.push({ technique:"box-line", patternCells: ps.slice(), patternDigit: d, patternUnit: { type:"col", idx: c }, lineUnit: { type:"box", idx: bi }, eliminations: elims });
+      }
+    }
+    return out;
+  }
+
+  // Naked subset: N cells in a unit whose candidates ⊆ same N digits → eliminate those digits from rest of unit.
+  function findAllNakedSubset(map, size){
+    const out = [];
+    const techName = ["", "", "naked-pair", "naked-triple", "naked-quad"][size] || "naked-subset";
+    for (const u of ALL_UNITS){
+      const candCells = u.cells.filter(({r,c}) => map[r][c].size >= 2 && map[r][c].size <= size);
+      if (candCells.length < size) continue;
+      const recurse = (start, picked) => {
+        if (picked.length === size){
+          const union = new Set();
+          for (const cell of picked) for (const d of map[cell.r][cell.c]) union.add(d);
+          if (union.size !== size) return;
+          const elims = [];
+          for (const cell of u.cells){
+            if (picked.some(p => p.r === cell.r && p.c === cell.c)) continue;
+            for (const d of union) if (map[cell.r][cell.c].has(d)) elims.push({ r: cell.r, c: cell.c, digit: d });
+          }
+          if (elims.length) out.push({ technique: techName, patternCells: picked.slice(), patternDigits: Array.from(union).sort((a,b)=>a-b), patternUnit: { type: u.type, idx: u.idx }, eliminations: elims });
+          return;
+        }
+        for (let i=start; i<candCells.length; i++){
+          picked.push(candCells[i]);
+          recurse(i+1, picked);
+          picked.pop();
+        }
+      };
+      recurse(0, []);
+    }
+    return out;
+  }
+
+  // Hidden subset: N digits in a unit appear only in same N cells → eliminate other candidates from those cells.
+  function findAllHiddenSubset(map, size){
+    const out = [];
+    const techName = ["", "", "hidden-pair", "hidden-triple", "hidden-quad"][size] || "hidden-subset";
+    for (const u of ALL_UNITS){
+      const positions = {};
+      for (let d=1; d<=9; d++){
+        const ps = u.cells.filter(({r,c}) => map[r][c].has(d));
+        if (ps.length >= 1 && ps.length <= size) positions[d] = ps;
+      }
+      const digits = Object.keys(positions).map(Number);
+      if (digits.length < size) continue;
+      const recurse = (start, picked) => {
+        if (picked.length === size){
+          const cellSet = new Set();
+          for (const d of picked) for (const p of positions[d]) cellSet.add(p.r*9+p.c);
+          if (cellSet.size !== size) return;
+          const cells = [...cellSet].map(k => ({ r: Math.floor(k/9), c: k%9 }));
+          const pickedSet = new Set(picked);
+          const elims = [];
+          for (const { r, c } of cells){
+            for (const d of map[r][c]) if (!pickedSet.has(d)) elims.push({ r, c, digit: d });
+          }
+          if (elims.length) out.push({ technique: techName, patternCells: cells, patternDigits: picked.slice().sort((a,b)=>a-b), patternUnit: { type: u.type, idx: u.idx }, eliminations: elims });
+          return;
+        }
+        for (let i=start; i<digits.length; i++){
+          picked.push(digits[i]);
+          recurse(i+1, picked);
+          picked.pop();
+        }
+      };
+      recurse(0, []);
+    }
+    return out;
+  }
+
+  // X-Wing: digit D appears in exactly 2 columns across 2 rows (or vice versa) → eliminate D from those columns elsewhere.
+  function findAllXWing(map){
+    const out = [];
+    for (let d=1; d<=9; d++){
+      const rowCols = {};
+      for (let r=0;r<9;r++){
+        const cs = [];
+        for (let c=0;c<9;c++) if (map[r][c].has(d)) cs.push(c);
+        if (cs.length === 2) rowCols[r] = cs;
+      }
+      const rs = Object.keys(rowCols).map(Number);
+      for (let i=0;i<rs.length;i++) for (let j=i+1;j<rs.length;j++){
+        const a = rowCols[rs[i]], b = rowCols[rs[j]];
+        if (a[0] === b[0] && a[1] === b[1]){
+          const c1 = a[0], c2 = a[1];
+          const elims = [];
+          for (let r=0;r<9;r++){
+            if (r === rs[i] || r === rs[j]) continue;
+            if (map[r][c1].has(d)) elims.push({ r, c: c1, digit: d });
+            if (map[r][c2].has(d)) elims.push({ r, c: c2, digit: d });
+          }
+          if (elims.length) out.push({ technique:"x-wing", patternCells:[{r:rs[i],c:c1},{r:rs[i],c:c2},{r:rs[j],c:c1},{r:rs[j],c:c2}], patternDigit: d, patternUnit:{ type:"row-pair", idx:[rs[i], rs[j]] }, lineUnit:{ type:"col-pair", idx:[c1, c2] }, eliminations: elims });
+        }
+      }
+      const colRows = {};
+      for (let c=0;c<9;c++){
+        const rs2 = [];
+        for (let r=0;r<9;r++) if (map[r][c].has(d)) rs2.push(r);
+        if (rs2.length === 2) colRows[c] = rs2;
+      }
+      const cs = Object.keys(colRows).map(Number);
+      for (let i=0;i<cs.length;i++) for (let j=i+1;j<cs.length;j++){
+        const a = colRows[cs[i]], b = colRows[cs[j]];
+        if (a[0] === b[0] && a[1] === b[1]){
+          const r1 = a[0], r2 = a[1];
+          const elims = [];
+          for (let c=0;c<9;c++){
+            if (c === cs[i] || c === cs[j]) continue;
+            if (map[r1][c].has(d)) elims.push({ r: r1, c, digit: d });
+            if (map[r2][c].has(d)) elims.push({ r: r2, c, digit: d });
+          }
+          if (elims.length) out.push({ technique:"x-wing", patternCells:[{r:r1,c:cs[i]},{r:r2,c:cs[i]},{r:r1,c:cs[j]},{r:r2,c:cs[j]}], patternDigit: d, patternUnit:{ type:"col-pair", idx:[cs[i], cs[j]] }, lineUnit:{ type:"row-pair", idx:[r1, r2] }, eliminations: elims });
+        }
+      }
+    }
+    return out;
+  }
+
+  // Y-Wing (XY-Wing): pivot {a,b} with two pincers {a,z} and {b,z} both seeing the pivot.
+  // z can be eliminated from any cell that sees both pincers.
+  function findAllYWing(map){
+    function sees(a, b){
+      if (a.r === b.r && a.c === b.c) return false;
+      return a.r === b.r || a.c === b.c || (Math.floor(a.r/3) === Math.floor(b.r/3) && Math.floor(a.c/3) === Math.floor(b.c/3));
+    }
+    const out = [];
+    const cells2 = [];
+    for (let r=0;r<9;r++) for (let c=0;c<9;c++){
+      if (map[r][c].size === 2) cells2.push({ r, c, cands: [...map[r][c]].sort((a,b)=>a-b) });
+    }
+    for (const pivot of cells2){
+      const [a, b] = pivot.cands;
+      const seenAB = cells2.filter(o => sees(pivot, o));
+      const pincersA = seenAB.filter(o => o.cands.includes(a) && !o.cands.includes(b));
+      const pincersB = seenAB.filter(o => o.cands.includes(b) && !o.cands.includes(a));
+      for (const pa of pincersA){
+        const za = pa.cands.find(d => d !== a);
+        for (const pb of pincersB){
+          const zb = pb.cands.find(d => d !== b);
+          if (za !== zb) continue;
+          const z = za;
+          const elims = [];
+          for (let r=0;r<9;r++) for (let c=0;c<9;c++){
+            if ((r === pivot.r && c === pivot.c) || (r === pa.r && c === pa.c) || (r === pb.r && c === pb.c)) continue;
+            if (!map[r][c].has(z)) continue;
+            if (sees({r,c}, pa) && sees({r,c}, pb)) elims.push({ r, c, digit: z });
+          }
+          if (elims.length) out.push({
+            technique: "y-wing",
+            patternCells: [{r:pivot.r,c:pivot.c},{r:pa.r,c:pa.c},{r:pb.r,c:pb.c}],
+            patternDigit: z,
+            patternDigits: [a,b,z].sort((x,y)=>x-y),
+            patternUnit: { type:"y-wing", idx:-1 },
+            eliminations: elims
+          });
+        }
+      }
+    }
+    return out;
+  }
+
+  // Swordfish: digit D restricted to 3 columns across 3 rows (or vice versa).
+  function findAllSwordfish(map){
+    const out = [];
+    for (let d=1; d<=9; d++){
+      // Rows-based
+      const rowCols = {};
+      for (let r=0;r<9;r++){
+        const cs = [];
+        for (let c=0;c<9;c++) if (map[r][c].has(d)) cs.push(c);
+        if (cs.length >= 2 && cs.length <= 3) rowCols[r] = cs;
+      }
+      const rs = Object.keys(rowCols).map(Number);
+      for (let i=0;i<rs.length;i++) for (let j=i+1;j<rs.length;j++) for (let k=j+1;k<rs.length;k++){
+        const union = new Set([...rowCols[rs[i]], ...rowCols[rs[j]], ...rowCols[rs[k]]]);
+        if (union.size !== 3) continue;
+        const cols = [...union];
+        const elims = [];
+        for (let r=0;r<9;r++){
+          if (r === rs[i] || r === rs[j] || r === rs[k]) continue;
+          for (const c of cols) if (map[r][c].has(d)) elims.push({ r, c, digit: d });
+        }
+        if (elims.length){
+          const patternCells = [];
+          for (const r of [rs[i], rs[j], rs[k]]) for (const c of cols) if (map[r][c].has(d)) patternCells.push({ r, c });
+          out.push({ technique:"swordfish", patternCells, patternDigit: d, patternUnit:{ type:"row-triple", idx:[rs[i], rs[j], rs[k]] }, lineUnit:{ type:"col-triple", idx: cols }, eliminations: elims });
+        }
+      }
+      // Cols-based
+      const colRows = {};
+      for (let c=0;c<9;c++){
+        const rs2 = [];
+        for (let r=0;r<9;r++) if (map[r][c].has(d)) rs2.push(r);
+        if (rs2.length >= 2 && rs2.length <= 3) colRows[c] = rs2;
+      }
+      const cs = Object.keys(colRows).map(Number);
+      for (let i=0;i<cs.length;i++) for (let j=i+1;j<cs.length;j++) for (let k=j+1;k<cs.length;k++){
+        const union = new Set([...colRows[cs[i]], ...colRows[cs[j]], ...colRows[cs[k]]]);
+        if (union.size !== 3) continue;
+        const rows = [...union];
+        const elims = [];
+        for (let c=0;c<9;c++){
+          if (c === cs[i] || c === cs[j] || c === cs[k]) continue;
+          for (const r of rows) if (map[r][c].has(d)) elims.push({ r, c, digit: d });
+        }
+        if (elims.length){
+          const patternCells = [];
+          for (const c of [cs[i], cs[j], cs[k]]) for (const r of rows) if (map[r][c].has(d)) patternCells.push({ r, c });
+          out.push({ technique:"swordfish", patternCells, patternDigit: d, patternUnit:{ type:"col-triple", idx:[cs[i], cs[j], cs[k]] }, lineUnit:{ type:"row-triple", idx: rows }, eliminations: elims });
+        }
+      }
+    }
+    return out;
+  }
+
+  // Fallback: pull the next placement from the stored solution. Honest about not finding a technique.
+  function findSolverFallback(){
+    if (!state.solution) return null;
+    for (let r=0;r<9;r++) for (let c=0;c<9;c++){
+      if (state.values[r][c] === 0 && state.solution[r][c]){
+        return { type:"naked", r, c, digit: state.solution[r][c], technique:"solver" };
+      }
+    }
+    return null;
+  }
+
+  // Difficulty-ordered pipeline. First technique whose first eliminating pattern unblocks a single wins.
+  const HINT_PIPELINE = [
+    { name:"pointing",       fn: findAllPointing },
+    { name:"box-line",       fn: findAllBoxLine },
+    { name:"naked-pair",     fn: m => findAllNakedSubset(m, 2) },
+    { name:"hidden-pair",    fn: m => findAllHiddenSubset(m, 2) },
+    { name:"naked-triple",   fn: m => findAllNakedSubset(m, 3) },
+    { name:"hidden-triple",  fn: m => findAllHiddenSubset(m, 3) },
+    { name:"x-wing",         fn: findAllXWing },
+    { name:"y-wing",         fn: findAllYWing },
+    { name:"naked-quad",     fn: m => findAllNakedSubset(m, 4) },
+    { name:"hidden-quad",    fn: m => findAllHiddenSubset(m, 4) },
+    { name:"swordfish",      fn: findAllSwordfish },
+  ];
+
+  function findHint(){
+    const map = computeCandidates(state.values);
+    // Direct singles first.
+    const single = findSinglesInMap(map);
+    if (single) return single;
+    // Each technique tier: enumerate every pattern; first one whose elims unblock a single wins.
+    for (const t of HINT_PIPELINE){
+      const patterns = t.fn(map);
+      for (const p of patterns){
+        const clone = cloneCandidates(map);
+        for (const e of p.eliminations) clone[e.r][e.c].delete(e.digit);
+        const resulting = findSinglesInMap(clone);
+        if (resulting){
+          return Object.assign({}, resulting, {
+            technique: p.technique,
+            patternCells: p.patternCells,
+            patternDigit: p.patternDigit,
+            patternDigits: p.patternDigits,
+            patternUnit: p.patternUnit,
+            lineUnit: p.lineUnit,
+            eliminations: p.eliminations,
+          });
+        }
+      }
+    }
+    // Nothing in the toolbox — fall back to the stored solution.
+    return findSolverFallback();
   }
 
   // ===== Render =====
@@ -1384,11 +1729,15 @@
 
         if (h){
           const isFocus = h.r===r && h.c===c;
+          const isPattern = !!(h.patternCells && h.patternCells.some(p => p.r === r && p.c === c));
           let isUnit = false;
-          if (h.type==="row") isUnit = h.unitIdx===r;
-          else if (h.type==="col") isUnit = h.unitIdx===c;
-          else if (h.type==="box") isUnit = (Math.floor(r/3)*3 + Math.floor(c/3)) === h.unitIdx;
+          if (h.technique){
+            // For technique hints: tint pattern cells but no full-unit tint (would be visually noisy).
+          } else if (h.type === "row") isUnit = h.unitIdx === r;
+          else if (h.type === "col") isUnit = h.unitIdx === c;
+          else if (h.type === "box") isUnit = (Math.floor(r/3)*3 + Math.floor(c/3)) === h.unitIdx;
           if (isFocus) cell.classList.add("hint-focus");
+          else if (isPattern) cell.classList.add("hint-pattern");
           else if (isUnit) cell.classList.add("hint-unit");
         } else {
           if (isSel) cell.classList.add("sel");
@@ -1601,14 +1950,109 @@
     document.getElementById("hint-pop-x").classList.remove("open");
     render();
   }
+  const BOX_NAMES = ["top-left","top-middle","top-right","middle-left","centre","middle-right","bottom-left","bottom-middle","bottom-right"];
+  function unitName(u){
+    if (!u) return "";
+    if (u.type === "row") return `row ${u.idx + 1}`;
+    if (u.type === "col") return `column ${u.idx + 1}`;
+    if (u.type === "box") return `the ${BOX_NAMES[u.idx]} box`;
+    if (u.type === "row-pair") return `rows ${u.idx[0]+1} and ${u.idx[1]+1}`;
+    if (u.type === "col-pair") return `columns ${u.idx[0]+1} and ${u.idx[1]+1}`;
+    return "";
+  }
+  function cellLabel(r, c){ return `R${r+1}C${c+1}`; }
+
+  function describeTechnique(h){
+    const t = h.technique;
+    if (t === "pointing"){
+      return {
+        short: `Pointing ${h.patternCells.length === 2 ? "pair" : "triple"}`,
+        what: `In ${unitName(h.patternUnit)}, the digit ${h.patternDigit} can only land on ${unitName(h.lineUnit)} (cells ${h.patternCells.map(p => cellLabel(p.r, p.c)).join(", ")}).`,
+        deduce: `So ${h.patternDigit} must come out of ${unitName(h.lineUnit)} from inside the box, which means ${h.patternDigit} cannot appear anywhere else in ${unitName(h.lineUnit)}.`
+      };
+    }
+    if (t === "box-line"){
+      return {
+        short: `Box/line reduction`,
+        what: `In ${unitName(h.patternUnit)}, every spot for ${h.patternDigit} is inside ${unitName(h.lineUnit)} (cells ${h.patternCells.map(p => cellLabel(p.r, p.c)).join(", ")}).`,
+        deduce: `So inside that box, ${h.patternDigit} can only go on this line, which removes ${h.patternDigit} from the rest of the box.`
+      };
+    }
+    if (t === "naked-pair" || t === "naked-triple" || t === "naked-quad"){
+      const n = h.patternCells.length;
+      const word = n === 2 ? "pair" : (n === 3 ? "triple" : "quad");
+      return {
+        short: `Naked ${word}`,
+        what: `In ${unitName(h.patternUnit)}, ${n} cells (${h.patternCells.map(p => cellLabel(p.r, p.c)).join(", ")}) only ever hold the digits {${h.patternDigits.join(", ")}}.`,
+        deduce: `Those ${n} digits are reserved for those ${n} cells, so they can be eliminated as candidates from every other cell in ${unitName(h.patternUnit)}.`
+      };
+    }
+    if (t === "hidden-pair" || t === "hidden-triple" || t === "hidden-quad"){
+      const n = h.patternCells.length;
+      const word = n === 2 ? "pair" : (n === 3 ? "triple" : "quad");
+      return {
+        short: `Hidden ${word}`,
+        what: `In ${unitName(h.patternUnit)}, the digits {${h.patternDigits.join(", ")}} only fit in ${n} cells: ${h.patternCells.map(p => cellLabel(p.r, p.c)).join(", ")}.`,
+        deduce: `Those ${n} digits must occupy those cells, so any other candidate in those cells can be eliminated.`
+      };
+    }
+    if (t === "x-wing"){
+      return {
+        short: `X-Wing on ${h.patternDigit}`,
+        what: `In ${unitName(h.patternUnit)}, the digit ${h.patternDigit} appears in exactly the same two ${h.patternUnit.type === "row-pair" ? "columns" : "rows"} (forming a rectangle at ${h.patternCells.map(p => cellLabel(p.r, p.c)).join(", ")}).`,
+        deduce: `Two of those four cells will hold ${h.patternDigit}, one per line. So ${h.patternDigit} cannot appear in those ${h.patternUnit.type === "row-pair" ? "columns" : "rows"} anywhere else.`
+      };
+    }
+    if (t === "y-wing"){
+      const [pivot, pa, pb] = h.patternCells;
+      return {
+        short: `Y-Wing on ${h.patternDigit}`,
+        what: `Pivot ${cellLabel(pivot.r, pivot.c)} has 2 candidates that match the pincers ${cellLabel(pa.r, pa.c)} and ${cellLabel(pb.r, pb.c)} (sharing digit ${h.patternDigit}).`,
+        deduce: `Whichever value the pivot takes, one of the pincers must be ${h.patternDigit}. So any cell that sees both pincers cannot be ${h.patternDigit}.`
+      };
+    }
+    if (t === "swordfish"){
+      const lineWord = h.patternUnit.type === "row-triple" ? "rows" : "columns";
+      const elimWord = h.patternUnit.type === "row-triple" ? "columns" : "rows";
+      return {
+        short: `Swordfish on ${h.patternDigit}`,
+        what: `In three ${lineWord}, the digit ${h.patternDigit} is restricted to the same three ${elimWord}.`,
+        deduce: `Three of those nine intersection cells hold ${h.patternDigit} (one per line), so ${h.patternDigit} cannot appear in those three ${elimWord} anywhere else.`
+      };
+    }
+    if (t === "solver"){
+      return {
+        short: "Beyond the built-in techniques",
+        what: "This position needs a technique more advanced than the ones the app currently knows (e.g. forcing chains, colouring, XYZ-Wing).",
+        deduce: "Falling back to the puzzle's stored solution to keep you moving."
+      };
+    }
+    return null;
+  }
+
+  function describePlacement(h){
+    if (h.type === "naked") return `Cell ${cellLabel(h.r, h.c)} is now left with ${h.digit} as its only candidate.`;
+    if (h.type === "row")   return `In row ${h.unitIdx + 1}, after this elimination ${h.digit} can only fit at ${cellLabel(h.r, h.c)}.`;
+    if (h.type === "col")   return `In column ${h.unitIdx + 1}, after this elimination ${h.digit} can only fit at ${cellLabel(h.r, h.c)}.`;
+    return `In ${BOX_NAMES[h.unitIdx]} box, after this elimination ${h.digit} can only fit at ${cellLabel(h.r, h.c)}.`;
+  }
+
   function renderHintPop(){
     const pop = document.getElementById("hint-pop-x");
     pop.classList.add("open");
     const h = state.hint;
     const bulb = `<span class="hint-icon-x"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5C5.5 1.5 4 3.5 4 5.6c0 1.4.7 2.5 1.6 3.4v2H10.4v-2c.9-.9 1.6-2 1.6-3.4 0-2.1-1.5-4.1-4-4.1z"/><path d="M6 13h4M6.5 14.5h3"/></svg></span>`;
-    const boxNames = ["top-left","top-middle","top-right","middle-left","centre","middle-right","bottom-left","bottom-middle","bottom-right"];
     let title = "", body = "";
-    if (h.level === 1){
+    if (h.technique){
+      const desc = describeTechnique(h);
+      if (h.level === 1){
+        title = desc.short;
+        body = desc.what;
+      } else {
+        title = `Place ${h.digit} at ${cellLabel(h.r, h.c)}`;
+        body = `${desc.deduce} ${describePlacement(h)}`;
+      }
+    } else if (h.level === 1){
       if (h.type === "naked"){
         title = "Naked single available";
         body = "One empty cell on the board has only a single possible value.";
@@ -1619,39 +2063,34 @@
         title = `Hidden single in column ${h.unitIdx + 1}`;
         body = "One digit in this column can only fit in a single cell.";
       } else {
-        title = `Hidden single in the ${boxNames[h.unitIdx]} box`;
+        title = `Hidden single in the ${BOX_NAMES[h.unitIdx]} box`;
         body = "One digit in this box can only fit in a single cell.";
       }
-      pop.innerHTML = `
-        <h4>${bulb}<span>${title}</span></h4>
-        <p>${body}</p>
-        <div class="hint-actions-x">
-          <button type="button" class="hint-btn-x" data-act="dismiss">Dismiss</button>
-          <button type="button" class="hint-btn-x primary" data-act="more">See more</button>
-        </div>`;
     } else {
-      const cellLabel = `row ${h.r + 1}, column ${h.c + 1}`;
+      const lbl = `row ${h.r + 1}, column ${h.c + 1}`;
       if (h.type === "naked"){
-        title = `${h.digit} goes in ${cellLabel}`;
+        title = `${h.digit} goes in ${lbl}`;
         body = `Every other digit is blocked from this cell by its row, column or 3x3 box. Only ${h.digit} fits.`;
       } else if (h.type === "row"){
-        title = `Place ${h.digit} in ${cellLabel}`;
+        title = `Place ${h.digit} in ${lbl}`;
         body = `In row ${h.unitIdx + 1}, every other empty cell already has ${h.digit} blocked by its column or box. This is the only spot ${h.digit} can go.`;
       } else if (h.type === "col"){
-        title = `Place ${h.digit} in ${cellLabel}`;
+        title = `Place ${h.digit} in ${lbl}`;
         body = `In column ${h.unitIdx + 1}, every other empty cell already has ${h.digit} blocked by its row or box. This is the only spot ${h.digit} can go.`;
       } else {
-        title = `Place ${h.digit} in ${cellLabel}`;
-        body = `In the ${boxNames[h.unitIdx]} box, every other empty cell already has ${h.digit} blocked by its row or column. This is the only spot ${h.digit} can go.`;
+        title = `Place ${h.digit} in ${lbl}`;
+        body = `In the ${BOX_NAMES[h.unitIdx]} box, every other empty cell already has ${h.digit} blocked by its row or column. This is the only spot ${h.digit} can go.`;
       }
-      pop.innerHTML = `
-        <h4>${bulb}<span>${title}</span></h4>
-        <p>${body}</p>
-        <div class="hint-actions-x">
-          <button type="button" class="hint-btn-x" data-act="dismiss">Dismiss</button>
-          <button type="button" class="hint-btn-x primary" data-act="apply">Apply</button>
-        </div>`;
     }
+    const primaryAct = h.level === 1 ? "more" : "apply";
+    const primaryLabel = h.level === 1 ? "See more" : "Apply";
+    pop.innerHTML = `
+      <h4>${bulb}<span>${title}</span></h4>
+      <p>${body}</p>
+      <div class="hint-actions-x">
+        <button type="button" class="hint-btn-x" data-act="dismiss">Dismiss</button>
+        <button type="button" class="hint-btn-x primary" data-act="${primaryAct}">${primaryLabel}</button>
+      </div>`;
   }
 
   function escapeHtml(s){
