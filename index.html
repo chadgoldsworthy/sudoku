@@ -344,16 +344,6 @@
   }
   .ca-x.ripple { animation: colorRipple 0.42s ease-out; z-index: 2; }
 
-  /* === Selection outline draw-in === */
-  @keyframes drawSelection {
-    from { stroke-dashoffset: var(--sel-len, 100); }
-    to   { stroke-dashoffset: 0; }
-  }
-  .sel-overlay-x path.draw-in {
-    stroke-dasharray: var(--sel-len, 100);
-    animation: drawSelection 0.18s cubic-bezier(.5,.9,.5,1) forwards;
-  }
-
   /* === Numpad digit complete === */
   .na-x { position: relative; overflow: hidden; }
   .na-x .check-mark {
@@ -2623,23 +2613,8 @@
     path.setAttribute("stroke-linecap", "round");
     path.setAttribute("vector-effect", "non-scaling-stroke");
     svg.appendChild(path);
-    // Animate the outline drawing in only when the selection actually changed
-    // (not on every unrelated re-render). We measure the path length once it
-    // is in the DOM, then set stroke-dasharray + offset and add the class.
-    const newKey = cells.map(p => p.r * 9 + p.c).sort().join(",");
-    if (newKey !== _prevSelKey){
-      _prevSelKey = newKey;
-      requestAnimationFrame(() => {
-        try {
-          const len = path.getTotalLength();
-          path.style.setProperty("--sel-len", len);
-          path.classList.add("draw-in");
-        } catch(_) {}
-      });
-    }
     return svg;
   }
-  let _prevSelKey = "";
 
   function loopToRoundedPath(loop, r, inset){
     const n = loop.length;
