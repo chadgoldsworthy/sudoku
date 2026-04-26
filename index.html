@@ -614,6 +614,24 @@
     flex-shrink: 0;
   }
 
+  /* ===== STUCK BANNER ===== */
+  .stuck-banner-x {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 12px;
+    margin-bottom: 10px;
+    background: var(--hint-bg);
+    border: 1px solid var(--hint);
+    color: var(--hint-text);
+    border-radius: 12px;
+    font-size: 12.5px;
+    line-height: 1.4;
+    box-shadow: var(--shadow-sm);
+  }
+  .stuck-banner-x[hidden] { display: none; }
+  .stuck-banner-x svg { color: var(--hint); flex-shrink: 0; }
+
   /* ===== TOAST ===== */
   .toast-x {
     position: absolute;
@@ -793,6 +811,207 @@
     touch-action: manipulation;
   }
   .stats-clear-x:hover { background: var(--wrong-soft); }
+
+  /* ===== TECHNIQUES GUIDE ===== */
+  .tag-x {
+    display: inline-flex; align-items: center;
+    font-size: 9.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .6px;
+    padding: 2px 7px; border-radius: 999px; flex-shrink: 0;
+  }
+  .tag-x[hidden], .ibtn-x[hidden] { display: none !important; }
+  .tag-x.beg { color: #1aa17c; background: rgba(26,161,124,.12); }
+  .tag-x.int { color: #d68924; background: rgba(214,137,36,.12); }
+  .tag-x.adv { color: #b14a8c; background: rgba(177,74,140,.12); }
+  [data-theme="dark"] .tag-x.beg { color: #4ad7af; background: rgba(74,215,175,.18); }
+  [data-theme="dark"] .tag-x.int { color: #fbbf60; background: rgba(251,191,96,.18); }
+  [data-theme="dark"] .tag-x.adv { color: #d985c5; background: rgba(217,133,197,.18); }
+  #tech-drawer-x .drawer-head-x { gap: 8px; }
+  #tech-drawer-x #tech-title-x { flex: 1; }
+
+  .tech-group-label-x {
+    font-size: 11px; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .8px;
+    margin: 18px 0 8px;
+  }
+  .tech-group-label-x:first-child { margin-top: 4px; }
+  .tech-card-x {
+    all: unset; cursor: pointer; box-sizing: border-box; display: block;
+    width: 100%;
+    padding: 13px 14px;
+    border-radius: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border-thin);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 7px;
+    transition: transform .1s ease, border-color .15s ease;
+    touch-action: manipulation;
+  }
+  .tech-card-x:active { transform: scale(.99); }
+  .tech-card-x:hover { border-color: var(--accent); }
+  .tech-card-head-x { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .tech-card-head-x h4 { margin: 0; font-size: 14.5px; font-weight: 600; flex: 1; }
+  .tech-card-x p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.4; }
+  .tech-chev-x { color: var(--muted); flex-shrink: 0; }
+
+  .tech-key-idea-x {
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    color: var(--text);
+    border-radius: 14px;
+    padding: 13px 14px;
+    margin-bottom: 12px;
+    font-size: 13.5px;
+    line-height: 1.5;
+    display: flex; align-items: flex-start; gap: 9px;
+  }
+  .tech-key-idea-x svg { flex-shrink: 0; color: var(--accent); margin-top: 2px; }
+  .tech-key-idea-x b { color: var(--accent-strong); font-weight: 700; }
+
+  .tech-section-x {
+    background: var(--surface);
+    border: 1px solid var(--border-thin);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    box-shadow: var(--shadow-sm);
+  }
+  .tech-section-x .label {
+    font-size: 10px; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .8px;
+    margin-bottom: 7px;
+  }
+  .tech-section-x p { margin: 0 0 8px; font-size: 13.5px; line-height: 1.5; color: var(--text); }
+  .tech-section-x p:last-child { margin-bottom: 0; }
+  .tech-section-x ul { padding-left: 17px; margin: 0; font-size: 13.5px; line-height: 1.55; }
+  .tech-section-x ul li { margin-bottom: 3px; }
+
+  .tech-walk-x { counter-reset: step; margin: 12px 0 0; padding: 0; list-style: none; }
+  .tech-walk-x li {
+    position: relative;
+    padding: 6px 0 8px 30px;
+    font-size: 13.5px; line-height: 1.5;
+    counter-increment: step;
+  }
+  .tech-walk-x li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: 5px;
+    width: 20px; height: 20px;
+    background: var(--accent);
+    color: white;
+    border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+  }
+  .tech-walk-x li + li { border-top: 1px dashed var(--border-thin); }
+
+  /* mini grid */
+  .tech-mini-wrap-x {
+    display: grid;
+    grid-template-columns: 16px 1fr;
+    grid-template-rows: 16px 1fr;
+    gap: 3px;
+    margin: 4px auto 0;
+    max-width: 360px;
+    position: relative;
+  }
+  .tech-axis-x { display: grid; gap: 0; font-size: 9.5px; font-weight: 600; color: var(--muted); user-select: none; }
+  .tech-axis-x.cols { grid-column: 2; grid-row: 1; grid-template-columns: repeat(9, 1fr); }
+  .tech-axis-x.rows { grid-column: 1; grid-row: 2; grid-template-rows: repeat(9, 1fr); }
+  .tech-axis-x span { display: flex; align-items: center; justify-content: center; }
+  .tech-axis-x span.hot { color: var(--accent); font-weight: 800; }
+  .tech-mini-x {
+    grid-column: 2; grid-row: 2;
+    width: 100%;
+    aspect-ratio: 1;
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    grid-template-rows: repeat(9, 1fr);
+    background: var(--surface);
+    border: 2px solid var(--grid-thick);
+    border-radius: 5px;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    position: relative;
+  }
+  .tech-mc-x {
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    border-right: 1px solid var(--border-thin);
+    border-bottom: 1px solid var(--border-thin);
+    font-size: clamp(12px, 3vw, 16px);
+    font-weight: 500;
+    color: var(--text);
+    overflow: visible;
+  }
+  .tech-mc-x.tr { border-right: 2px solid var(--grid-thick); }
+  .tech-mc-x.tb { border-bottom: 2px solid var(--grid-thick); }
+  .tech-mc-x.nr { border-right: none; }
+  .tech-mc-x.nb { border-bottom: none; }
+  .tech-mc-x .v.given { color: var(--text); font-weight: 600; }
+  .tech-mc-x .v.placed { color: var(--accent); font-weight: 700; }
+  .tech-mc-x .pen-x {
+    display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
+    width: 100%; height: 100%; padding: 1px;
+  }
+  .tech-mc-x .pen-x span {
+    font-size: clamp(6.5px, 1.6vw, 8.5px);
+    color: var(--muted);
+    display: flex; align-items: center; justify-content: center; line-height: 1;
+    position: relative;
+  }
+  .tech-mc-x .pen-x span.hl { color: var(--accent); font-weight: 700; }
+  .tech-mc-x .pen-x span.strike { color: var(--wrong); }
+  .tech-mc-x .pen-x span.strike::after {
+    content: ""; position: absolute; left: 14%; right: 14%; top: 50%;
+    height: 1px; background: var(--wrong);
+  }
+  .tech-mc-x.trigger { background: var(--accent-soft); }
+  .tech-mc-x.pattern { background: rgba(245,166,35,.18); box-shadow: inset 0 0 0 1px var(--hint); z-index: 1; }
+  .tech-mc-x.focus   { background: var(--hint-cell); box-shadow: inset 0 0 0 2px var(--hint); z-index: 2; }
+  .tech-mc-x.elim    { background: var(--wrong-soft); }
+  [data-theme="dark"] .tech-mc-x.pattern { background: rgba(251,191,36,.18); }
+  .tech-step-badge-x {
+    position: absolute; top: 1px; left: 1px;
+    width: 13px; height: 13px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white; font-size: 8px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center;
+    z-index: 3;
+    box-shadow: 0 1px 2px rgba(0,0,0,.25);
+  }
+  .tech-aff-overlay-x {
+    position: absolute;
+    border: 2px dashed var(--wrong);
+    border-radius: 5px;
+    pointer-events: none;
+    z-index: 4;
+  }
+
+  .tech-legend-x {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    margin-top: 12px;
+    font-size: 10.5px;
+    color: var(--muted);
+  }
+  .tech-chip-x { display: inline-flex; align-items: center; gap: 5px; padding: 2px 7px; border-radius: 999px; background: var(--surface-2); }
+  .tech-sw-x { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
+  .tech-sw-x.trigger  { background: var(--accent-soft); border: 1px solid var(--accent); }
+  .tech-sw-x.pattern  { background: rgba(245,166,35,.18); border: 1px solid var(--hint); }
+  .tech-sw-x.focus    { background: var(--hint-cell); border: 2px solid var(--hint); }
+  .tech-sw-x.elim     { background: var(--wrong-soft); border: 1px solid var(--wrong); }
+  .tech-sw-x.affected { background: transparent; border: 2px dashed var(--wrong); }
+
+  .tech-empty-grid-x {
+    color: var(--muted); font-size: 12.5px; text-align: center; padding: 22px 12px;
+    background: var(--surface-2); border-radius: 12px; line-height: 1.5;
+  }
+  .hint-learn-link-x {
+    display: inline-block; font-size: 11.5px; font-weight: 600;
+    color: var(--hint-text-2); text-decoration: underline; margin-top: 8px;
+    cursor: pointer; touch-action: manipulation;
+  }
 </style>
 </head>
 <body>
@@ -809,9 +1028,17 @@
       <button type="button" class="ibtn-x" id="stats-btn-x" aria-label="Statistics">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14V9.5"/><path d="M8 14V5"/><path d="M13 14V2"/></svg>
       </button>
+      <button type="button" class="ibtn-x" id="tech-btn-x" aria-label="Techniques">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2.5h7.5a2.5 2.5 0 0 1 2.5 2.5v8.5H5.5a2.5 2.5 0 0 1-2.5-2.5V2.5z"/><path d="M3 11h10"/><path d="M6 5.5h4"/></svg>
+      </button>
       <button type="button" class="ibtn-x" id="settings-btn-x" aria-label="Settings">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2.4"/><path d="M13.4 9.6a1 1 0 0 0 .2 1.1l.04.04a1.2 1.2 0 1 1-1.7 1.7l-.04-.04a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V13a1.2 1.2 0 0 1-2.4 0v-.06a1 1 0 0 0-.66-.9 1 1 0 0 0-1.1.2l-.04.04a1.2 1.2 0 1 1-1.7-1.7l.04-.04a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H3a1.2 1.2 0 0 1 0-2.4h.06a1 1 0 0 0 .9-.66 1 1 0 0 0-.2-1.1l-.04-.04a1.2 1.2 0 1 1 1.7-1.7l.04.04a1 1 0 0 0 1.1.2H6.6a1 1 0 0 0 .6-.9V3a1.2 1.2 0 0 1 2.4 0v.06a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.04-.04a1.2 1.2 0 1 1 1.7 1.7l-.04.04a1 1 0 0 0-.2 1.1v.04a1 1 0 0 0 .9.6H13a1.2 1.2 0 0 1 0 2.4h-.06a1 1 0 0 0-.9.6z"/></svg>
       </button>
+    </div>
+
+    <div class="stuck-banner-x" id="stuck-banner-x" hidden>
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5L15 13.5H1z"/><path d="M8 6.5v3.5"/><circle cx="8" cy="11.5" r=".6" fill="currentColor"/></svg>
+      <span>This position is beyond the built-in techniques. You may need to revisit earlier moves or guess.</span>
     </div>
 
     <div class="grid-wrap-x">
@@ -911,6 +1138,20 @@
         </button>
       </div>
       <div id="stats-body-x"></div>
+    </div>
+
+    <div class="drawer-x" id="tech-drawer-x">
+      <div class="drawer-head-x">
+        <button type="button" class="ibtn-x" id="tech-back-btn-x" aria-label="Back" hidden>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3 5 8l5 5"/></svg>
+        </button>
+        <h3 id="tech-title-x">Techniques</h3>
+        <span id="tech-tag-x" class="tag-x" hidden></span>
+        <button type="button" class="ibtn-x" id="tech-close-x" aria-label="Close">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg>
+        </button>
+      </div>
+      <div id="tech-body-x"></div>
     </div>
 
     <div class="drawer-x" id="drawer-x">
@@ -1646,6 +1887,158 @@
     return out;
   }
 
+  // Shared visibility check: does cell A see cell B (same row, column, or 3×3 box)?
+  function sharesUnit(a, b){
+    if (a.r === b.r && a.c === b.c) return false;
+    return a.r === b.r || a.c === b.c || (Math.floor(a.r/3) === Math.floor(b.r/3) && Math.floor(a.c/3) === Math.floor(b.c/3));
+  }
+
+  // XYZ-Wing: pivot has 3 candidates {x, y, z}; pincer A {x, z}; pincer B {y, z}; both pincers see the pivot.
+  // The digit z must occupy one of {pivot, pincer A, pincer B}, so any cell that sees ALL three can drop z.
+  function findAllXYZWing(map){
+    const out = [];
+    const cells2 = [];
+    for (let r=0;r<9;r++) for (let c=0;c<9;c++) if (map[r][c].size === 2) cells2.push({ r, c, cands: [...map[r][c]].sort((a,b)=>a-b) });
+    for (let r=0;r<9;r++) for (let c=0;c<9;c++){
+      if (map[r][c].size !== 3) continue;
+      const pivotCands = [...map[r][c]].sort((a,b)=>a-b);
+      // Try each candidate of the pivot as the shared "z".
+      for (const z of pivotCands){
+        const others = pivotCands.filter(d => d !== z);
+        const [x, y] = others;
+        const pincersX = cells2.filter(o => sharesUnit({r,c}, o) && o.cands.includes(x) && o.cands.includes(z) && !o.cands.includes(y));
+        const pincersY = cells2.filter(o => sharesUnit({r,c}, o) && o.cands.includes(y) && o.cands.includes(z) && !o.cands.includes(x));
+        for (const pa of pincersX){
+          for (const pb of pincersY){
+            // Cells that see pivot, pincer A, and pincer B
+            const elims = [];
+            for (let er=0;er<9;er++) for (let ec=0;ec<9;ec++){
+              if ((er === r && ec === c) || (er === pa.r && ec === pa.c) || (er === pb.r && ec === pb.c)) continue;
+              if (!map[er][ec].has(z)) continue;
+              if (sharesUnit({r:er,c:ec}, {r,c}) && sharesUnit({r:er,c:ec}, pa) && sharesUnit({r:er,c:ec}, pb)){
+                elims.push({ r: er, c: ec, digit: z });
+              }
+            }
+            if (elims.length) out.push({
+              technique: "xyz-wing",
+              patternCells: [{r,c},{r:pa.r,c:pa.c},{r:pb.r,c:pb.c}],
+              patternDigit: z,
+              patternDigits: [x, y, z].sort((a,b)=>a-b),
+              eliminations: elims
+            });
+          }
+        }
+      }
+    }
+    return out;
+  }
+
+  // Skyscraper: for digit D, two columns each have D in exactly 2 cells. One pair shares a row (the "base").
+  // The other endpoints (in different rows) form the "roof". Cells seeing both roofs can drop D.
+  // Same idea applies with rows/columns swapped.
+  function findAllSkyscraper(map){
+    const out = [];
+    for (let d=1; d<=9; d++){
+      // Columns variant
+      const colCells = {};
+      for (let c=0;c<9;c++){
+        const cells = [];
+        for (let r=0;r<9;r++) if (map[r][c].has(d)) cells.push({ r, c });
+        if (cells.length === 2) colCells[c] = cells;
+      }
+      const cs = Object.keys(colCells).map(Number);
+      for (let i=0;i<cs.length;i++) for (let j=i+1;j<cs.length;j++){
+        const A = colCells[cs[i]], B = colCells[cs[j]];
+        for (let ai=0; ai<2; ai++) for (let bi=0; bi<2; bi++){
+          if (A[ai].r !== B[bi].r) continue;
+          const base = [A[ai], B[bi]];
+          const roof = [A[1-ai], B[1-bi]];
+          if (roof[0].r === roof[1].r) continue;
+          const elims = [];
+          for (let er=0; er<9; er++) for (let ec=0; ec<9; ec++){
+            if (!map[er][ec].has(d)) continue;
+            if ((er === base[0].r && ec === base[0].c) || (er === base[1].r && ec === base[1].c)) continue;
+            if ((er === roof[0].r && ec === roof[0].c) || (er === roof[1].r && ec === roof[1].c)) continue;
+            if (sharesUnit({r:er,c:ec}, roof[0]) && sharesUnit({r:er,c:ec}, roof[1])) elims.push({ r: er, c: ec, digit: d });
+          }
+          if (elims.length) out.push({
+            technique: "skyscraper",
+            patternCells: [...base, ...roof],
+            patternDigit: d,
+            eliminations: elims
+          });
+        }
+      }
+      // Rows variant
+      const rowCells = {};
+      for (let r=0;r<9;r++){
+        const cells = [];
+        for (let c=0;c<9;c++) if (map[r][c].has(d)) cells.push({ r, c });
+        if (cells.length === 2) rowCells[r] = cells;
+      }
+      const rs = Object.keys(rowCells).map(Number);
+      for (let i=0;i<rs.length;i++) for (let j=i+1;j<rs.length;j++){
+        const A = rowCells[rs[i]], B = rowCells[rs[j]];
+        for (let ai=0; ai<2; ai++) for (let bi=0; bi<2; bi++){
+          if (A[ai].c !== B[bi].c) continue;
+          const base = [A[ai], B[bi]];
+          const roof = [A[1-ai], B[1-bi]];
+          if (roof[0].c === roof[1].c) continue;
+          const elims = [];
+          for (let er=0; er<9; er++) for (let ec=0; ec<9; ec++){
+            if (!map[er][ec].has(d)) continue;
+            if ((er === base[0].r && ec === base[0].c) || (er === base[1].r && ec === base[1].c)) continue;
+            if ((er === roof[0].r && ec === roof[0].c) || (er === roof[1].r && ec === roof[1].c)) continue;
+            if (sharesUnit({r:er,c:ec}, roof[0]) && sharesUnit({r:er,c:ec}, roof[1])) elims.push({ r: er, c: ec, digit: d });
+          }
+          if (elims.length) out.push({
+            technique: "skyscraper",
+            patternCells: [...base, ...roof],
+            patternDigit: d,
+            eliminations: elims
+          });
+        }
+      }
+    }
+    return out;
+  }
+
+  // Unique Rectangle Type 1: 4 cells at the corners of a rectangle spanning exactly 2 boxes.
+  // Three corners hold only {a, b}; the fourth has additional candidates. The fourth cell can have a, b removed
+  // (otherwise the puzzle would have two solutions, which our generator forbids).
+  function findAllUniqueRectangleT1(map){
+    const out = [];
+    for (let r1=0; r1<8; r1++) for (let r2=r1+1; r2<9; r2++){
+      for (let c1=0; c1<8; c1++) for (let c2=c1+1; c2<9; c2++){
+        const sameBoxRow = Math.floor(r1/3) === Math.floor(r2/3);
+        const sameBoxCol = Math.floor(c1/3) === Math.floor(c2/3);
+        // Exactly one of the bands must match for the rectangle to span exactly 2 boxes.
+        if (sameBoxRow === sameBoxCol) continue;
+        const cells = [{r:r1,c:c1},{r:r1,c:c2},{r:r2,c:c1},{r:r2,c:c2}];
+        for (let i=0;i<4;i++){
+          const fourth = cells[i];
+          if (map[fourth.r][fourth.c].size <= 2) continue;
+          const others = cells.filter((_, j) => j !== i);
+          if (!others.every(({r,c}) => map[r][c].size === 2)) continue;
+          const pair = map[others[0].r][others[0].c];
+          if (pair.size !== 2) continue;
+          if (!others.every(({r,c}) => setsEqual(map[r][c], pair))) continue;
+          const [a, b] = [...pair].sort((x,y)=>x-y);
+          const elims = [];
+          if (map[fourth.r][fourth.c].has(a)) elims.push({ r: fourth.r, c: fourth.c, digit: a });
+          if (map[fourth.r][fourth.c].has(b)) elims.push({ r: fourth.r, c: fourth.c, digit: b });
+          if (elims.length) out.push({
+            technique: "ur-1",
+            patternCells: cells,
+            patternDigits: [a, b],
+            eliminations: elims
+          });
+        }
+      }
+    }
+    return out;
+  }
+
   // Fallback: pull the next placement from the stored solution. Honest about not finding a technique.
   function findSolverFallback(){
     if (!state.solution) return null;
@@ -1666,10 +2059,13 @@
     { name:"naked-triple",   fn: m => findAllNakedSubset(m, 3) },
     { name:"hidden-triple",  fn: m => findAllHiddenSubset(m, 3) },
     { name:"x-wing",         fn: findAllXWing },
+    { name:"skyscraper",     fn: findAllSkyscraper },
     { name:"y-wing",         fn: findAllYWing },
+    { name:"xyz-wing",       fn: findAllXYZWing },
     { name:"naked-quad",     fn: m => findAllNakedSubset(m, 4) },
     { name:"hidden-quad",    fn: m => findAllHiddenSubset(m, 4) },
     { name:"swordfish",      fn: findAllSwordfish },
+    { name:"ur-1",           fn: findAllUniqueRectangleT1 },
   ];
 
   function findHint(){
@@ -1816,12 +2212,30 @@
     document.getElementById("diff-label-x").textContent = DIFF_LABELS[state.difficulty];
   }
 
+  let _hintCheckTimer = null;
+  function scheduleHintCheck(){
+    if (_hintCheckTimer) clearTimeout(_hintCheckTimer);
+    _hintCheckTimer = setTimeout(() => {
+      _hintCheckTimer = null;
+      recomputeHintAvailability();
+    }, 50);
+  }
+  function recomputeHintAvailability(){
+    const banner = document.getElementById("stuck-banner-x");
+    if (!banner) return;
+    if (state.won || !state.board){ banner.hidden = true; return; }
+    const h = findHint();
+    const beyond = !h || h.technique === "solver";
+    banner.hidden = !beyond;
+  }
+
   function render(){
     renderGrid();
     renderTools();
     renderNumpad();
     renderHeader();
     saveGame();
+    scheduleHintCheck();
   }
 
   function placeNumber(digit){
@@ -2020,6 +2434,28 @@
         deduce: `Three of those nine intersection cells hold ${h.patternDigit} (one per line), so ${h.patternDigit} cannot appear in those three ${elimWord} anywhere else.`
       };
     }
+    if (t === "xyz-wing"){
+      const [pivot, pa, pb] = h.patternCells;
+      return {
+        short: `XYZ-Wing on ${h.patternDigit}`,
+        what: `Pivot ${cellLabel(pivot.r, pivot.c)} has 3 candidates {${h.patternDigits.join(", ")}}; pincers ${cellLabel(pa.r, pa.c)} and ${cellLabel(pb.r, pb.c)} share ${h.patternDigit} with the pivot.`,
+        deduce: `Whatever value the pivot ends up with, ${h.patternDigit} lands in one of the three. So any cell that sees all three cannot be ${h.patternDigit}.`
+      };
+    }
+    if (t === "skyscraper"){
+      return {
+        short: `Skyscraper on ${h.patternDigit}`,
+        what: `Two strong links on ${h.patternDigit} share a base line; the other endpoints (the "roofs") are at ${h.patternCells.slice(2).map(p => cellLabel(p.r, p.c)).join(" and ")}.`,
+        deduce: `One of the two roof cells must hold ${h.patternDigit}, so cells that see both roofs cannot.`
+      };
+    }
+    if (t === "ur-1"){
+      return {
+        short: "Unique rectangle",
+        what: `Four cells at ${h.patternCells.map(p => cellLabel(p.r, p.c)).join(", ")} would form a deadly pattern if three of them were locked to {${h.patternDigits.join(", ")}} and the fourth could also be those two digits.`,
+        deduce: `Because every Sudoku must have a single solution, the fourth cell cannot be ${h.patternDigits.join(" or ")} — those candidates are removed.`
+      };
+    }
     if (t === "solver"){
       return {
         short: "Beyond the built-in techniques",
@@ -2084,9 +2520,18 @@
     }
     const primaryAct = h.level === 1 ? "more" : "apply";
     const primaryLabel = h.level === 1 ? "See more" : "Apply";
+    // Map hint to a technique-guide entry id for the "Learn more" link.
+    let learnId = null;
+    if (h.technique && h.technique !== "solver") learnId = h.technique;
+    else if (!h.technique && h.type === "naked") learnId = "naked-single";
+    else if (!h.technique && (h.type === "row" || h.type === "col" || h.type === "box")) learnId = "hidden-single";
+    const learnLink = (h.level === 1 && learnId)
+      ? `<a class="hint-learn-link-x" data-act="learn" data-learn="${learnId}">Learn more →</a>`
+      : "";
     pop.innerHTML = `
       <h4>${bulb}<span>${title}</span></h4>
       <p>${body}</p>
+      ${learnLink}
       <div class="hint-actions-x">
         <button type="button" class="hint-btn-x" data-act="dismiss">Dismiss</button>
         <button type="button" class="hint-btn-x primary" data-act="${primaryAct}">${primaryLabel}</button>
@@ -2388,6 +2833,10 @@
       if (act === "dismiss") closeHintPop();
       else if (act === "more") expandHint();
       else if (act === "apply") applyHint();
+      else if (act === "learn"){
+        const id = btn.dataset.learn;
+        if (id) openTechDrawer(id);
+      }
     });
 
     document.getElementById("settings-btn-x").addEventListener("click", () => {
@@ -2403,6 +2852,9 @@
     document.getElementById("stats-close-x").addEventListener("click", () => {
       document.getElementById("stats-drawer-x").classList.remove("open");
     });
+    document.getElementById("tech-btn-x").addEventListener("click", () => openTechDrawer());
+    document.getElementById("tech-close-x").addEventListener("click", closeTechDrawer);
+    document.getElementById("tech-back-btn-x").addEventListener("click", techRenderList);
     document.querySelectorAll(".switch-x[data-toggle]").forEach(el => {
       el.addEventListener("click", () => toggleSetting(el.dataset.toggle));
     });
@@ -2541,6 +2993,640 @@
     document.getElementById("resume-sub-x").textContent =
       `${DIFF_LABELS[state.difficulty]} puzzle · ${fmtTime(state.timerSec)} elapsed · ${pct}% done.`;
     document.getElementById("modal-resume-x").classList.add("open");
+  }
+
+  // ===== Techniques guide =====
+  const TECH_DIFF = { beg: "Beginner", int: "Intermediate", adv: "Advanced" };
+  const TECH_BOX_NAMES = BOX_NAMES;
+
+  function techEmptyGrid(){ return Array.from({length:9}, () => Array(9).fill(null).map(() => ({}))); }
+
+  // Examples: every example explicitly demonstrates the technique. Cells set: { value, given, pencils, strikePencils, hl, step }.
+  // Per-grid: triggerUnit, affectedUnit, stepMarkers, legend.
+  function techGrid_NakedSingle(){
+    const g = techEmptyGrid();
+    const r5 = [5,0,3,1,2,8,6,7,9];
+    for (let c=0;c<9;c++) if (r5[c]) g[4][c] = { value: r5[c], given: true };
+    g[4][1] = { pencils:[4], hl:'focus', step:1 };
+    return { cells:g, triggerUnit:{type:'row', idx:4}, legend:['focus'] };
+  }
+  function techGrid_HiddenSingle(){
+    const g = techEmptyGrid();
+    [{r:0,c:7},{r:4,c:0},{r:5,c:4},{r:6,c:8}].forEach(p => g[p.r][p.c] = { value:6, given:true });
+    g[3][0] = { pencils:[1,3,5,8,9] };
+    g[3][1] = { pencils:[3,5,7,9] };
+    g[3][2] = { pencils:[2,5,8] };
+    g[3][3] = { pencils:[2,5,7,9] };
+    g[3][4] = { pencils:[1,7,8] };
+    g[3][5] = { pencils:[1,2,5,9] };
+    g[3][6] = { pencils:[1,2,5,6,7], hl:'focus', step:1 };
+    g[3][7] = { pencils:[1,2,4,5,8] };
+    g[3][8] = { pencils:[2,3,5,9] };
+    return { cells:g, triggerUnit:{type:'row', idx:3}, legend:['trigger','focus'] };
+  }
+  function techGrid_Pointing(){
+    const g = techEmptyGrid();
+    const layout = ["91___34__","__5_927__","_____43__","__8__7_43","__45_827_","_____9_5_","2_1__56_4","_8___6__1","_____1__7"];
+    for (let r=0;r<9;r++) for (let c=0;c<9;c++){ const ch = layout[r][c]; if (ch !== "_") g[r][c] = { value: parseInt(ch, 10), given: true }; }
+    g[4][8] = { pencils:[6,9], hl:'pattern', step:1 };
+    g[5][8] = { pencils:[6,8], hl:'pattern', step:2 };
+    g[0][8] = { pencils:[2,5,6,8], strikePencils:[6], hl:'elim' };
+    g[1][8] = { pencils:[6,8], strikePencils:[6], hl:'elim' };
+    g[2][8] = { pencils:[2,5,6,8,9], strikePencils:[6], hl:'elim' };
+    return { cells:g, triggerUnit:{type:'box', idx:5}, affectedUnit:{type:'col', idx:8},
+      stepMarkers:[{r:4,c:8,n:1},{r:5,c:8,n:2},{r:1,c:8,n:3}],
+      legend:['trigger','pattern','elim','affected'] };
+  }
+  function techGrid_BoxLine(){
+    const g = techEmptyGrid();
+    g[1][1] = { value:4, given:true };
+    g[2][4] = { value:4, given:true };
+    g[0][1] = { value:7, given:true };
+    g[0][3] = { value:9, given:true };
+    g[0][5] = { value:1, given:true };
+    g[1][6] = { value:2, given:true };
+    g[2][8] = { value:8, given:true };
+    g[0][0] = { pencils:[2,3,5,6,8] };
+    g[0][2] = { pencils:[2,3,5,6,8] };
+    g[0][4] = { pencils:[2,3,5,6,8] };
+    g[0][6] = { pencils:[2,3,4,5,6], hl:'pattern', step:1 };
+    g[0][7] = { pencils:[3,4,5,6,8], hl:'pattern', step:2 };
+    g[0][8] = { pencils:[3,4,5,6],   hl:'pattern', step:3 };
+    g[1][7] = { pencils:[3,4,5,8],   strikePencils:[4], hl:'elim' };
+    g[1][8] = { pencils:[3,4,5,6],   strikePencils:[4], hl:'elim' };
+    g[2][6] = { pencils:[1,3,4,5],   strikePencils:[4], hl:'elim' };
+    g[2][7] = { pencils:[3,4,5,6],   strikePencils:[4], hl:'elim' };
+    return { cells:g, triggerUnit:{type:'row', idx:0}, affectedUnit:{type:'box', idx:2},
+      stepMarkers:[{r:0,c:6,n:1},{r:0,c:7,n:2},{r:0,c:8,n:3},{r:1,c:7,n:4}],
+      legend:['trigger','pattern','elim','affected'] };
+  }
+  function techGrid_NakedPair(){
+    const g = techEmptyGrid();
+    g[5][0] = { value:1, given:true };
+    g[5][6] = { value:8, given:true };
+    g[5][1] = { pencils:[3,7], hl:'pattern', step:1 };
+    g[5][4] = { pencils:[3,7], hl:'pattern', step:2 };
+    g[5][2] = { pencils:[2,3,7,9],   strikePencils:[3,7], hl:'elim' };
+    g[5][3] = { pencils:[2,5,6,7],   strikePencils:[7],   hl:'elim' };
+    g[5][5] = { pencils:[2,3,5,6,9], strikePencils:[3],   hl:'elim' };
+    g[5][7] = { pencils:[2,5,6,9] };
+    g[5][8] = { pencils:[5,6,9] };
+    return { cells:g, triggerUnit:{type:'row', idx:5},
+      stepMarkers:[{r:5,c:1,n:1},{r:5,c:4,n:2},{r:5,c:2,n:3}],
+      legend:['trigger','pattern','elim'] };
+  }
+  function techGrid_HiddenPair(){
+    const g = techEmptyGrid();
+    const place = (r, c, v) => { g[r][c] = { value: v, given: true }; };
+    [[0,0,2],[1,6,2],[2,8,2],[4,5,2],[5,1,2],[7,7,2],[8,4,2],
+     [0,5,5],[1,8,5],[2,1,5],[4,7,5],[5,0,5],[7,5,5],[8,2,5]].forEach(([r,c,v]) => place(r,c,v));
+    g[3][3] = { pencils:[1,2,5,7,8], strikePencils:[1,7,8], hl:'pattern', step:1 };
+    g[6][3] = { pencils:[2,5,9],     strikePencils:[9],     hl:'pattern', step:2 };
+    return { cells:g, triggerUnit:{type:'col', idx:3},
+      stepMarkers:[{r:3,c:3,n:1},{r:6,c:3,n:2}],
+      legend:['trigger','pattern'] };
+  }
+  function techGrid_NakedTriple(){
+    const g = techEmptyGrid();
+    g[3][0] = { value:9, given:true };
+    g[3][8] = { value:8, given:true };
+    g[3][1] = { pencils:[2,4,7], hl:'pattern', step:1 };
+    g[3][3] = { pencils:[2,4],   hl:'pattern', step:2 };
+    g[3][6] = { pencils:[4,7],   hl:'pattern', step:3 };
+    g[3][2] = { pencils:[1,2,4,7], strikePencils:[2,4,7], hl:'elim' };
+    g[3][4] = { pencils:[3,4,5],   strikePencils:[4],     hl:'elim' };
+    g[3][5] = { pencils:[2,5,7],   strikePencils:[2,7],   hl:'elim' };
+    g[3][7] = { pencils:[1,5,6] };
+    return { cells:g, triggerUnit:{type:'row', idx:3},
+      stepMarkers:[{r:3,c:1,n:1},{r:3,c:3,n:2},{r:3,c:6,n:3}],
+      legend:['trigger','pattern','elim'] };
+  }
+  function techGrid_HiddenTriple(){
+    const g = techEmptyGrid();
+    g[2][0] = { value:1, given:true };
+    g[2][8] = { value:9, given:true };
+    g[2][1] = { pencils:[2,3,4,7,8], strikePencils:[3,7,8], hl:'pattern', step:1 };
+    g[2][4] = { pencils:[3,5,6,7,8], strikePencils:[5,6],   hl:'pattern', step:2 };
+    g[2][6] = { pencils:[3,7,8],                            hl:'pattern', step:3 };
+    g[2][2] = { pencils:[2,4,6] };
+    g[2][3] = { pencils:[2,4,5,6] };
+    g[2][5] = { pencils:[2,4,5,6] };
+    g[2][7] = { pencils:[2,4,5,6] };
+    return { cells:g, triggerUnit:{type:'row', idx:2},
+      stepMarkers:[{r:2,c:1,n:1},{r:2,c:4,n:2},{r:2,c:6,n:3}],
+      legend:['trigger','pattern'] };
+  }
+  function techGrid_XWing(){
+    const g = techEmptyGrid();
+    g[0][0] = { value:8, given:true };
+    g[0][3] = { value:9, given:true };
+    g[2][6] = { value:1, given:true };
+    g[2][8] = { value:9, given:true };
+    g[6][7] = { value:1, given:true };
+    g[8][5] = { value:4, given:true };
+    g[1][2] = { pencils:[4,5,7], hl:'pattern', step:1 };
+    g[1][6] = { pencils:[3,4,8], hl:'pattern', step:2 };
+    g[5][2] = { pencils:[4,6,9], hl:'pattern', step:3 };
+    g[5][6] = { pencils:[2,4,7], hl:'pattern', step:4 };
+    g[0][2] = { pencils:[3,4,5,7], strikePencils:[4], hl:'elim' };
+    g[3][2] = { pencils:[4,5,6],   strikePencils:[4], hl:'elim' };
+    g[4][6] = { pencils:[4,7,9],   strikePencils:[4], hl:'elim' };
+    g[7][6] = { pencils:[2,4,6],   strikePencils:[4], hl:'elim' };
+    return { cells:g, triggerUnit:{type:'rows', idx:[1,5]}, affectedUnit:{type:'cols', idx:[2,6]},
+      stepMarkers:[{r:1,c:2,n:1},{r:1,c:6,n:2},{r:5,c:2,n:3},{r:5,c:6,n:4}],
+      legend:['trigger','pattern','elim','affected'] };
+  }
+  function techGrid_YWing(){
+    const g = techEmptyGrid();
+    g[3][3] = { value:8, given:true };
+    g[3][8] = { value:9, given:true };
+    g[3][2] = { pencils:[1,7],     hl:'pattern', step:1 }; // pivot {1,7}
+    g[3][6] = { pencils:[1,4],     hl:'pattern', step:2 }; // pincer {1,4} sees pivot via row
+    g[5][2] = { pencils:[4,7],     hl:'pattern', step:3 }; // pincer {4,7} sees pivot via col
+    g[5][6] = { pencils:[2,4,5,8], strikePencils:[4], hl:'elim' }; // sees both pincers
+    return { cells:g,
+      stepMarkers:[{r:3,c:2,n:1},{r:3,c:6,n:2},{r:5,c:2,n:3},{r:5,c:6,n:4}],
+      legend:['pattern','elim'] };
+  }
+  function techGrid_XYZWing(){
+    const g = techEmptyGrid();
+    g[1][2] = { pencils:[1,4,7], hl:'pattern', step:1 }; // pivot {1,4,7}
+    g[1][5] = { pencils:[1,4],   hl:'pattern', step:2 }; // pincer {1,4}, shares row with pivot
+    g[2][2] = { pencils:[4,7],   hl:'pattern', step:3 }; // pincer {4,7}, shares col with pivot AND box
+    g[1][1] = { pencils:[3,4,8], strikePencils:[4], hl:'elim' }; // sees pivot, pincer-A (row), pincer-B (box)
+    return { cells:g,
+      stepMarkers:[{r:1,c:2,n:1},{r:1,c:5,n:2},{r:2,c:2,n:3},{r:1,c:1,n:4}],
+      legend:['pattern','elim'] };
+  }
+  function techGrid_NakedQuad(){
+    const g = techEmptyGrid();
+    g[0][0] = { value:7, given:true };
+    g[0][7] = { value:8, given:true };
+    g[0][1] = { pencils:[1,2,3,4], hl:'pattern', step:1 };
+    g[0][3] = { pencils:[1,3],     hl:'pattern', step:2 };
+    g[0][4] = { pencils:[2,4],     hl:'pattern', step:3 };
+    g[0][6] = { pencils:[1,2,3],   hl:'pattern', step:4 };
+    g[0][2] = { pencils:[1,5,6],   strikePencils:[1], hl:'elim' };
+    g[0][5] = { pencils:[2,5,6,9], strikePencils:[2], hl:'elim' };
+    g[0][8] = { pencils:[3,9],     strikePencils:[3], hl:'elim' };
+    return { cells:g, triggerUnit:{type:'row', idx:0},
+      stepMarkers:[{r:0,c:1,n:1},{r:0,c:3,n:2},{r:0,c:4,n:3},{r:0,c:6,n:4}],
+      legend:['trigger','pattern','elim'] };
+  }
+  function techGrid_HiddenQuad(){
+    const g = techEmptyGrid();
+    g[0][0] = { value:9, given:true };
+    g[0][1] = { pencils:[1,5,6,8], strikePencils:[5,6], hl:'pattern', step:1 };
+    g[0][2] = { pencils:[2,5,7],   strikePencils:[5],   hl:'pattern', step:2 };
+    g[0][4] = { pencils:[1,2,7],                        hl:'pattern', step:3 };
+    g[0][5] = { pencils:[2,7,8],                        hl:'pattern', step:4 };
+    g[0][3] = { pencils:[3,4,5,6] };
+    g[0][6] = { pencils:[3,4,5,6] };
+    g[0][7] = { pencils:[3,4,5] };
+    g[0][8] = { pencils:[3,4,6] };
+    return { cells:g, triggerUnit:{type:'row', idx:0},
+      stepMarkers:[{r:0,c:1,n:1},{r:0,c:2,n:2},{r:0,c:4,n:3},{r:0,c:5,n:4}],
+      legend:['trigger','pattern'] };
+  }
+  function techGrid_Swordfish(){
+    const g = techEmptyGrid();
+    [[1,3],[1,5],[1,7], [4,3],[4,7], [7,5],[7,7]].forEach(([r,c],i) => {
+      g[r][c] = { pencils:[3,4], hl:'pattern', step: i+1 };
+    });
+    g[2][3] = { pencils:[3,5], strikePencils:[3], hl:'elim' };
+    g[3][7] = { pencils:[3,7], strikePencils:[3], hl:'elim' };
+    g[5][5] = { pencils:[3,8], strikePencils:[3], hl:'elim' };
+    g[6][3] = { pencils:[3,9], strikePencils:[3], hl:'elim' };
+    return { cells:g, triggerUnit:{type:'rows', idx:[1,4,7]}, affectedUnit:{type:'cols', idx:[3,5,7]},
+      legend:['trigger','pattern','elim','affected'] };
+  }
+  function techGrid_Skyscraper(){
+    const g = techEmptyGrid();
+    // Two columns each have digit 5 in exactly 2 cells. One pair shares a row (the base).
+    // Column 2 (idx 1): cells at row 0 (base) and row 5 (roof).
+    // Column 6 (idx 5): cells at row 0 (base) and row 7 (roof).
+    g[0][1] = { pencils:[3,5,8], hl:'pattern', step:1 }; // base
+    g[0][5] = { pencils:[2,5,7], hl:'pattern', step:2 }; // base
+    g[5][1] = { pencils:[1,5,6], hl:'pattern', step:3 }; // roof
+    g[7][5] = { pencils:[4,5,9], hl:'pattern', step:4 }; // roof
+    g[5][5] = { pencils:[3,5,7], strikePencils:[5], hl:'elim' }; // sees both roofs (row 5 with c=1 roof, col 5 with r=7 roof)
+    g[7][1] = { pencils:[2,5,6], strikePencils:[5], hl:'elim' };
+    return { cells:g,
+      stepMarkers:[{r:0,c:1,n:1},{r:0,c:5,n:2},{r:5,c:1,n:3},{r:7,c:5,n:4}],
+      legend:['pattern','elim'] };
+  }
+  function techGrid_UR1(){
+    const g = techEmptyGrid();
+    g[2][2] = { pencils:[3,7],     hl:'pattern', step:1 };
+    g[2][7] = { pencils:[3,7],     hl:'pattern', step:2 };
+    g[5][2] = { pencils:[3,7],     hl:'pattern', step:3 };
+    g[5][7] = { pencils:[3,5,7,9], strikePencils:[3,7], hl:'elim', step:4 };
+    return { cells:g,
+      stepMarkers:[{r:2,c:2,n:1},{r:2,c:7,n:2},{r:5,c:2,n:3},{r:5,c:7,n:4}],
+      legend:['pattern','elim'] };
+  }
+
+  const TECHNIQUES = [
+    {
+      id:"naked-single", name:"Naked Single", diff:"beg",
+      short:"A cell with only one candidate left.",
+      keyIdea:"When every other digit is blocked from a cell, the leftover digit <b>has to go in</b>.",
+      summary:"After enough placements, a cell often has only one possible value — every other digit appears in its row, column, or 3×3 box. Just write the survivor in.",
+      grid: techGrid_NakedSingle(),
+      walk:[
+        "Look at <b>R5C2</b>. Its row, column, and box together already contain 1, 2, 3, 5, 6, 7, 8, 9.",
+        "The only digit left untouched is <b>4</b>.",
+        "Place 4 at R5C2."
+      ],
+      spot:["Scan for cells whose pencil marks shrink to a single number.","Most common in the late game, after lots of digits are placed."],
+      why:"Each digit must appear once per row, column, and 3×3 box. If eight of the nine digits are already used by a cell's neighbours, the ninth is forced."
+    },
+    {
+      id:"hidden-single", name:"Hidden Single", diff:"beg",
+      short:"A digit that fits in only one cell of a row, column, or box.",
+      keyIdea:"If a digit can only land in <b>one</b> cell of a unit, it goes there — even if other digits could fit there too.",
+      summary:"A cell may have many candidates, but if you fix on a single digit and find it can only be placed in one cell of the row, column, or box, that's where it goes.",
+      grid: techGrid_HiddenSingle(),
+      walk:[
+        "Pick <b>row 4</b> and ask: where can <b>6</b> go?",
+        "Every other cell of row 4 already sees a 6 in its column or box.",
+        "Only <b>R4C7</b> is free. So 6 goes at R4C7."
+      ],
+      spot:["Pick a unit and a digit missing from it.","Mark every cell in the unit where the digit can still go.","If only one cell qualifies, place the digit there."],
+      why:"Each unit holds each digit exactly once. If a digit's only viable spot inside the unit is a single cell, the placement is forced."
+    },
+    {
+      id:"pointing", name:"Pointing Pair / Triple", diff:"int",
+      short:"A box's candidates for one digit are stuck on the same line.",
+      keyIdea:"If a digit is locked to one row inside a box, it must <b>leave the box on that row</b> — so it can't appear on the rest of the row outside the box.",
+      summary:"Inside a single 3×3 box, if a digit can only go on one row (or column), the digit must come from that line when it's placed in the box. So the digit cannot appear in the rest of that line outside the box.",
+      grid: techGrid_Pointing(),
+      walk:[
+        "Look at the <b>middle-right box</b>. Where can the digit <b>6</b> still go?",
+        "Only at <b>R5C9</b> and <b>R6C9</b> — both in column 9.",
+        "So when 6 lands in this box, it has to be on column 9.",
+        "That rules 6 out of column 9 elsewhere — eliminate from R1C9, R2C9, R3C9."
+      ],
+      spot:["Pick a box and a digit missing from it.","Find the cells in the box where that digit can still go.","If they all share a row or column, eliminate the digit elsewhere on that line."],
+      why:"The digit must go somewhere in the box. If every option lies on a single line, the box's instance of that digit will sit on that line — and a digit appears once per line, so the rest of the line is barred."
+    },
+    {
+      id:"box-line", name:"Box / Line Reduction", diff:"int",
+      short:"A row or column's candidates for one digit are stuck in one box.",
+      keyIdea:"If a digit can only appear in one box within its row, that box's instance of the digit <b>must</b> be on that row — so the rest of the box is off-limits.",
+      summary:"When a digit can only be placed inside a single 3×3 box within a row (or column), the digit lands somewhere on that row inside the box. Therefore the rest of the box (the other two rows of it) cannot hold the digit.",
+      grid: techGrid_BoxLine(),
+      walk:[
+        "Look at <b>row 1</b>. Where can the digit <b>4</b> still go?",
+        "Cells R1C1, R1C2, R1C3 are blocked (the top-left box already contains a 4 placed at R2C2). Cells R1C4, R1C5, R1C6 are blocked (the top-middle box already contains a 4 at R3C5).",
+        "That leaves only <b>R1C7, R1C8, R1C9</b> — all inside the top-right box.",
+        "So in the top-right box, 4 has to be in row 1. The rest of the box (rows 2 and 3) cannot contain 4."
+      ],
+      spot:["Pick a row or column and a digit missing from it.","If every cell where the digit can still go is inside one 3×3 box, that's a box/line reduction.","Eliminate the digit from the rest of that box."],
+      why:"The digit must appear in this row, and the only cells available are inside one box. The box's instance of the digit will be on that row — so the rest of the box is unavailable."
+    },
+    {
+      id:"naked-pair", name:"Naked Pair", diff:"int",
+      short:"Two cells in a unit holding the same two candidates.",
+      keyIdea:"Two cells, two digits, locked together — those digits are <b>used up</b> in those cells, so they're gone everywhere else in the unit.",
+      summary:"If two cells in a unit have only the same two candidates between them, one will be the first digit and one will be the second. Either way both digits are consumed, so the rest of the unit can't hold them.",
+      grid: techGrid_NakedPair(),
+      walk:[
+        "In <b>row 6</b>, look at <b>R6C2</b> and <b>R6C5</b>. Both have only the candidates {3, 7}.",
+        "Whichever way these two cells split it, both 3 and 7 end up taken by them.",
+        "So 3 and 7 can be eliminated from every other cell in row 6."
+      ],
+      spot:["Look for two cells in a unit with exactly the same two pencil marks (and nothing extra).","Strike those two digits from the rest of the unit."],
+      why:"Each digit appears once per unit. If two digits are forced into a 2-cell pool, they exhaust those slots — no room elsewhere."
+    },
+    {
+      id:"hidden-pair", name:"Hidden Pair", diff:"int",
+      short:"Two digits that only fit in the same two cells of a unit.",
+      keyIdea:"If two digits can only land in two cells of a unit, those cells are <b>locked</b> to those two digits — clear out everything else.",
+      summary:"If two digits each have candidates restricted to the same pair of cells, those cells must hold those two digits between them. Any other candidates in those cells can be eliminated.",
+      grid: techGrid_HiddenPair(),
+      walk:[
+        "In <b>column 3</b>, ask: where can <b>2</b> go? Only at R4C3 and R7C3.",
+        "Now: where can <b>5</b> go? Same two cells.",
+        "Two digits, two cells — locked. Strike everything else from those cells."
+      ],
+      spot:["Pick a unit. For each digit, list the cells where it could go.","If two digits collapse to the same two cells, you have a hidden pair.","Remove every other candidate from those two cells."],
+      why:"Two digits each have only two homes, and the homes are the same. Those cells must hold those digits — nothing else fits."
+    },
+    {
+      id:"naked-triple", name:"Naked Triple", diff:"int",
+      short:"Three cells in a unit whose candidates collectively use only three digits.",
+      keyIdea:"Three cells, three digits — those digits are <b>distributed</b> across them. So the rest of the unit can drop those candidates.",
+      summary:"Three cells in a unit whose pencil marks together only contain three distinct digits. They might not all hold the full triple — each cell can have any subset of those three — but those three digits are still consumed by those cells.",
+      grid: techGrid_NakedTriple(),
+      walk:[
+        "In <b>row 4</b>, R4C2 has {2,4,7}, R4C4 has {2,4}, R4C7 has {4,7}.",
+        "Their union is exactly {2, 4, 7} — three digits across three cells.",
+        "So 2, 4, and 7 can be eliminated from the rest of row 4."
+      ],
+      spot:["Look for three cells in a unit whose combined candidates are exactly three digits.","Each cell holds 2 or 3 of those digits, never anything outside the triple."],
+      why:"With three digits forced into three cells of the unit, those slots are saturated for those digits. The rest of the unit must use the other six digits."
+    },
+    {
+      id:"hidden-triple", name:"Hidden Triple", diff:"int",
+      short:"Three digits that only fit in the same three cells of a unit.",
+      keyIdea:"Three digits, three cells — they <b>own</b> those cells. Strip the rest of the candidates out.",
+      summary:"If three digits between them have candidates only in three cells of a unit, those cells must contain those digits. Other candidates in those cells can be removed.",
+      grid: techGrid_HiddenTriple(),
+      walk:[
+        "In <b>row 3</b>, find cells where 3, 7, and 8 can go.",
+        "All three digits' candidates collapse to the same three cells (R3C2, R3C5, R3C7).",
+        "Clear every other candidate from those three cells — they must contain 3, 7, and 8."
+      ],
+      spot:["Find three digits whose candidate cells in a unit collapse to the same three cells.","Remove other candidates from those cells."],
+      why:"Three digits forced into three cells lock the cells to those digits — anything else has to leave."
+    },
+    {
+      id:"x-wing", name:"X-Wing", diff:"adv",
+      short:"A digit forms a rectangle across two rows and two columns.",
+      keyIdea:"If a digit is restricted to the same two columns in two rows, those rows will <b>each</b> place it in one of those columns — saturating them.",
+      summary:"Two rows where a digit's candidates are restricted to the same two columns form an X-Wing. Two of the four corners will end up holding the digit (one per row). So the digit cannot appear in those columns elsewhere.",
+      grid: techGrid_XWing(),
+      walk:[
+        "Pick <b>4</b>. In row 2, 4 can go only at columns 3 and 7.",
+        "In row 6, 4 also only goes at columns 3 and 7.",
+        "Those four cells form a rectangle — the X-Wing.",
+        "So 4 can be eliminated from columns 3 and 7 in every other row."
+      ],
+      spot:["Pick a digit. For each row, list which columns can still hold it.","Find two rows that share the exact same pair of columns and only those.","The four intersection cells are the X-Wing."],
+      why:"Across the two rows, the digit must occupy one corner from each — covering both columns. So no other row can place the digit in those columns."
+    },
+    {
+      id:"skyscraper", name:"Skyscraper", diff:"adv",
+      short:"Two strong links on a digit, sharing one row or column.",
+      keyIdea:"Two columns each have a digit in just two cells; if one pair shares a row (the base), the other endpoints must <b>own</b> the digit between them.",
+      summary:"Find two columns (or rows) where a digit has candidates in exactly two cells. If two of those cells share a row (the \"base\"), the other two endpoints (in different rows) form the \"roof\". One of the roof cells must hold the digit, so cells seeing both roofs cannot.",
+      grid: techGrid_Skyscraper(),
+      walk:[
+        "Pick <b>5</b>. In column 2, 5 only fits at row 1 and row 6. In column 6, 5 only fits at row 1 and row 8.",
+        "The two row-1 cells share a row — the base.",
+        "The other endpoints (R6C2 and R8C6) are the roof. One of them must hold 5.",
+        "Eliminate 5 from cells that see both roofs (R6C6 and R8C2)."
+      ],
+      spot:["Pick a digit. For each column, count its candidate cells.","If two columns each have exactly 2 candidates, look for a pair sharing a row.","The other endpoints form the roof — eliminate the digit from cells seeing both."],
+      why:"Two columns each must place the digit in one of their two cells. If they both used the base row, the row would have two of the same digit — impossible. So at least one column places the digit on its roof. That roof always has the digit."
+    },
+    {
+      id:"y-wing", name:"Y-Wing (XY-Wing)", diff:"adv",
+      short:"A pivot cell with two pincers that share one common digit.",
+      keyIdea:"Pivot {a,b}, pincers {a,c} and {b,c} — whichever way the pivot goes, <b>c</b> ends up in one of the pincers.",
+      summary:"Find a pivot with exactly two candidates {a, b}, plus two pincer cells — one with {a, c} and one with {b, c} — both sharing a unit with the pivot. Whichever digit the pivot becomes, c must land in one of the pincers. So any cell that sees both pincers can drop c.",
+      grid: techGrid_YWing(),
+      walk:[
+        "Pivot R4C3 has {1, 7}.",
+        "Pincer R4C7 has {1, 4} (sees pivot via row).",
+        "Pincer R6C3 has {4, 7} (sees pivot via column).",
+        "If pivot is 1, R4C7 must be 4. If pivot is 7, R6C3 must be 4. Either way 4 is in one pincer — eliminate 4 from R6C7 (which sees both pincers)."
+      ],
+      spot:["Identify cells with exactly two candidates.","Look for a pivot whose two candidates pair with the same third digit in two of its peers.","Eliminate that third digit from cells that see both pincers."],
+      why:"The pivot must take one of its two candidates. Each pivot-choice forces one pincer to take c. So c is guaranteed to be in one of the two pincers — visible cells can't share it."
+    },
+    {
+      id:"xyz-wing", name:"XYZ-Wing", diff:"adv",
+      short:"Like Y-Wing but the pivot has three candidates.",
+      keyIdea:"Three cells together cover {x, y, z}; <b>z</b> always ends up in one of them, so any cell seeing all three drops z.",
+      summary:"A pivot with three candidates {x, y, z}, plus two pincers {x, z} and {y, z}, both seeing the pivot. Any cell that sees all three of these can have z eliminated.",
+      grid: techGrid_XYZWing(),
+      walk:[
+        "Pivot R2C3 has {1, 4, 7}.",
+        "Pincer R2C6 has {1, 4} (shares row).",
+        "Pincer R3C3 has {4, 7} (shares column and box).",
+        "Whatever the pivot is, 4 lands in one of the three. So any cell seeing all three (here R2C2) cannot be 4."
+      ],
+      spot:["Find a cell with exactly 3 candidates as the pivot.","Find two cells with 2 candidates each, sharing one digit with each other and with the pivot.","Eliminate the shared digit from cells that see all three."],
+      why:"The pivot must take x, y, or z. Each choice puts z into the pivot itself or one of the pincers. So z is locked into the trio — anything that sees all three loses it."
+    },
+    {
+      id:"naked-quad", name:"Naked Quad", diff:"adv",
+      short:"Four cells in a unit using only four digits between them.",
+      keyIdea:"Four cells, four digits — those digits <b>fill</b> the cells. Drop those candidates from everything else in the unit.",
+      summary:"Four cells in a unit whose combined pencil marks are exactly four digits. Those four digits will be distributed across those four cells, leaving no room for them elsewhere in the unit.",
+      grid: techGrid_NakedQuad(),
+      walk:[
+        "In <b>row 1</b>, four cells have candidates that together cover only {1, 2, 3, 4}.",
+        "Those four digits will fill those four cells (one each).",
+        "Eliminate 1, 2, 3, and 4 from the rest of row 1."
+      ],
+      spot:["Look for four cells in a unit whose combined candidates total exactly four digits.","Each cell holds 2-4 of the quad, nothing outside it."],
+      why:"Four digits forced into four cells leave no headroom. The rest of the unit uses the other five digits."
+    },
+    {
+      id:"hidden-quad", name:"Hidden Quad", diff:"adv",
+      short:"Four digits that only fit in the same four cells.",
+      keyIdea:"Four digits restricted to the same four cells <b>own</b> them. Strike everything else from those cells.",
+      summary:"If four digits each have candidates restricted to the same four cells of a unit, those cells must hold those digits between them. Other candidates in those cells can be removed.",
+      grid: techGrid_HiddenQuad(),
+      walk:[
+        "In <b>row 1</b>, four digits have candidates collapsing to the same four cells.",
+        "Those four digits must fill the four cells.",
+        "Strip every other candidate from those cells."
+      ],
+      spot:["For each set of four digits in a unit, list the cells where they could go.","If they collapse to the same four cells, you have a hidden quad."],
+      why:"Four digits with only four shared homes must occupy those homes. Everything else has to clear out."
+    },
+    {
+      id:"swordfish", name:"Swordfish", diff:"adv",
+      short:"An X-Wing extended across three rows and three columns.",
+      keyIdea:"Three rows where a digit is confined to the same three columns will <b>saturate</b> those columns — one digit per row, one per column.",
+      summary:"If three rows each have a digit's candidates restricted to the same three columns (each row uses 2 or 3 of them), the three rows together pin the digit to those three columns. The digit can be eliminated from those columns in any other row.",
+      grid: techGrid_Swordfish(),
+      walk:[
+        "Pick <b>3</b>. In rows 2, 5, and 8 the digit's candidates fit only inside columns 4, 6, and 8.",
+        "Three rows × three columns: nine intersection cells.",
+        "Three of them will hold 3 — one per row, one per column.",
+        "Eliminate 3 from columns 4, 6, and 8 in any other row."
+      ],
+      spot:["Pick a digit. List, per row, which columns can still hold it (only consider rows with 2 or 3 options).","Find three rows whose combined columns total exactly three.","Those columns are locked across those rows."],
+      why:"Three rows each must place the digit in one of their candidate columns. Together they fill the three columns one per row. So no other row can place the digit in those columns."
+    },
+    {
+      id:"ur-1", name:"Unique Rectangle", diff:"adv",
+      short:"Avoid the deadly pattern that would create two solutions.",
+      keyIdea:"Sudoku puzzles have <b>one</b> solution. A pattern that would allow two is impossible — so the candidate that would create it must be removed.",
+      summary:"Find four cells at the corners of a rectangle spanning exactly two boxes. If three cells hold only the candidates {a, b}, the fourth cell cannot also be {a, b} alone — that would let you swap a and b and still solve the puzzle, giving two solutions. So a and b can be eliminated from the fourth cell.",
+      grid: techGrid_UR1(),
+      walk:[
+        "Four corner cells (R3C3, R3C8, R6C3, R6C8) sit in two boxes.",
+        "Three of them are pencilled only with {3, 7}.",
+        "If the fourth (R6C8) were also {3, 7}, the puzzle would have two valid arrangements — but every Sudoku has exactly one solution.",
+        "So 3 and 7 can be eliminated from R6C8."
+      ],
+      spot:["Look for four cells forming a rectangle that spans two boxes (sharing one band).","Three corners holding only {a, b} means the fourth cell must contain something else."],
+      why:"Sudoku puzzles are guaranteed unique. The deadly four-cell pattern would allow two solutions, so it can never form. Any candidate that would complete the pattern is eliminated."
+    },
+  ];
+
+  // ===== Tech guide rendering =====
+  const TECH_BG_NAME = TECH_BOX_NAMES;
+
+  function techRenderList(){
+    let html = "";
+    const groups = ["beg","int","adv"];
+    for (const g of groups){
+      html += `<p class="tech-group-label-x">${TECH_DIFF[g]}</p>`;
+      for (const t of TECHNIQUES.filter(x => x.diff === g)){
+        html += `<button type="button" class="tech-card-x" data-tid="${t.id}">
+          <div class="tech-card-head-x">
+            <h4>${t.name}</h4>
+            <span class="tag-x ${t.diff}">${TECH_DIFF[t.diff]}</span>
+            <svg class="tech-chev-x" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M6 3l5 5-5 5"/></svg>
+          </div>
+          <p>${t.short}</p>
+        </button>`;
+      }
+    }
+    document.getElementById("tech-body-x").innerHTML = html;
+    document.getElementById("tech-body-x").querySelectorAll(".tech-card-x").forEach(el => {
+      el.addEventListener("click", () => techShowDetail(el.dataset.tid));
+    });
+    document.getElementById("tech-back-btn-x").hidden = true;
+    document.getElementById("tech-tag-x").hidden = true;
+    document.getElementById("tech-title-x").textContent = "Techniques";
+  }
+
+  function techRenderMiniGrid(grid){
+    if (!grid) return `<div class="tech-empty-grid-x">Visual coming soon.</div>`;
+    const triggerCellSet = new Set();
+    if (grid.triggerUnit){
+      const t = grid.triggerUnit;
+      if (t.type === 'row') for (let c=0;c<9;c++) triggerCellSet.add(t.idx*9+c);
+      else if (t.type === 'col') for (let r=0;r<9;r++) triggerCellSet.add(r*9+t.idx);
+      else if (t.type === 'rows') t.idx.forEach(r => { for (let c=0;c<9;c++) triggerCellSet.add(r*9+c); });
+      else if (t.type === 'cols') t.idx.forEach(c => { for (let r=0;r<9;r++) triggerCellSet.add(r*9+c); });
+      else if (t.type === 'box'){
+        const br = Math.floor(t.idx/3)*3, bc = (t.idx%3)*3;
+        for (let i=0;i<3;i++) for (let j=0;j<3;j++) triggerCellSet.add((br+i)*9+(bc+j));
+      }
+    }
+    const triggerHotRows = new Set(), triggerHotCols = new Set();
+    const affectedHotRows = new Set(), affectedHotCols = new Set();
+    if (grid.triggerUnit){
+      const t = grid.triggerUnit;
+      if (t.type === 'row') triggerHotRows.add(t.idx);
+      else if (t.type === 'col') triggerHotCols.add(t.idx);
+      else if (t.type === 'rows') t.idx.forEach(r => triggerHotRows.add(r));
+      else if (t.type === 'cols') t.idx.forEach(c => triggerHotCols.add(c));
+      else if (t.type === 'box'){
+        const br = Math.floor(t.idx/3)*3, bc = (t.idx%3)*3;
+        for (let r=br;r<br+3;r++) triggerHotRows.add(r);
+        for (let c=bc;c<bc+3;c++) triggerHotCols.add(c);
+      }
+    }
+    if (grid.affectedUnit){
+      const a = grid.affectedUnit;
+      if (a.type === 'row') affectedHotRows.add(a.idx);
+      else if (a.type === 'col') affectedHotCols.add(a.idx);
+      else if (a.type === 'rows') a.idx.forEach(r => affectedHotRows.add(r));
+      else if (a.type === 'cols') a.idx.forEach(c => affectedHotCols.add(c));
+      else if (a.type === 'box'){
+        const br = Math.floor(a.idx/3)*3, bc = (a.idx%3)*3;
+        for (let r=br;r<br+3;r++) affectedHotRows.add(r);
+        for (let c=bc;c<bc+3;c++) affectedHotCols.add(c);
+      }
+    }
+    const stepMap = new Map();
+    if (grid.stepMarkers) for (const m of grid.stepMarkers) stepMap.set(m.r*9+m.c, m.n);
+    let html = `<div class="tech-mini-wrap-x"><div></div><div class="tech-axis-x cols">`;
+    for (let c=0;c<9;c++) html += `<span class="${(triggerHotCols.has(c)||affectedHotCols.has(c))?'hot':''}">${c+1}</span>`;
+    html += `</div><div class="tech-axis-x rows">`;
+    for (let r=0;r<9;r++) html += `<span class="${(triggerHotRows.has(r)||affectedHotRows.has(r))?'hot':''}">${r+1}</span>`;
+    html += `</div><div class="tech-mini-x">`;
+    for (let r=0;r<9;r++) for (let c=0;c<9;c++){
+      const cell = grid.cells[r][c] || {};
+      let cls = "tech-mc-x";
+      if (c===2||c===5) cls += " tr";
+      if (r===2||r===5) cls += " tb";
+      if (c===8) cls += " nr";
+      if (r===8) cls += " nb";
+      const hl = cell.hl;
+      if (hl === 'focus') cls += " focus";
+      else if (hl === 'pattern') cls += " pattern";
+      else if (hl === 'elim') cls += " elim";
+      else if (triggerCellSet.has(r*9+c)) cls += " trigger";
+      let inner = "";
+      if (cell.value){
+        inner = `<span class="v ${cell.given ? 'given' : 'placed'}">${cell.value}</span>`;
+      } else if (cell.pencils && cell.pencils.length){
+        const strike = new Set(cell.strikePencils || []);
+        const pencils = new Set(cell.pencils);
+        inner = `<div class="pen-x">`;
+        for (let n=1; n<=9; n++){
+          if (pencils.has(n)) inner += `<span class="${strike.has(n)?'strike':''}">${n}</span>`;
+          else inner += `<span></span>`;
+        }
+        inner += `</div>`;
+      }
+      const stepN = stepMap.get(r*9+c);
+      if (stepN) inner = `<span class="tech-step-badge-x">${stepN}</span>` + inner;
+      html += `<div class="${cls}">${inner}</div>`;
+    }
+    // Affected-unit overlay lives INSIDE the grid so its percentage positions are relative to the grid box.
+    if (grid.affectedUnit){
+      const a = grid.affectedUnit;
+      const overlay = (top, left, w, h) => `<div class="tech-aff-overlay-x" style="top:${top};left:${left};width:${w};height:${h};"></div>`;
+      if (a.type === 'box'){
+        const br = Math.floor(a.idx/3), bc = a.idx%3;
+        html += overlay(`calc(${br * (100/3)}% + 2px)`, `calc(${bc * (100/3)}% + 2px)`, `calc(${100/3}% - 4px)`, `calc(${100/3}% - 4px)`);
+      } else if (a.type === 'col'){
+        html += overlay(`2px`, `calc(${a.idx * (100/9)}% + 2px)`, `calc(${100/9}% - 4px)`, `calc(100% - 4px)`);
+      } else if (a.type === 'row'){
+        html += overlay(`calc(${a.idx * (100/9)}% + 2px)`, `2px`, `calc(100% - 4px)`, `calc(${100/9}% - 4px)`);
+      }
+    }
+    html += `</div>`; // close mini grid
+    html += `</div>`; // close wrap
+    const lg = grid.legend || [];
+    if (lg.length){
+      html += `<div class="tech-legend-x">`;
+      if (lg.includes('trigger'))  html += `<span class="tech-chip-x"><span class="tech-sw-x trigger"></span>Trigger</span>`;
+      if (lg.includes('pattern'))  html += `<span class="tech-chip-x"><span class="tech-sw-x pattern"></span>Pattern</span>`;
+      if (lg.includes('focus'))    html += `<span class="tech-chip-x"><span class="tech-sw-x focus"></span>Placement</span>`;
+      if (lg.includes('elim'))     html += `<span class="tech-chip-x"><span class="tech-sw-x elim"></span>Eliminations</span>`;
+      if (lg.includes('affected')) html += `<span class="tech-chip-x"><span class="tech-sw-x affected"></span>Affected</span>`;
+      html += `</div>`;
+    }
+    return html;
+  }
+
+  function techShowDetail(id){
+    const t = TECHNIQUES.find(x => x.id === id);
+    if (!t) return;
+    document.getElementById("tech-title-x").textContent = t.name;
+    const tag = document.getElementById("tech-tag-x");
+    tag.textContent = TECH_DIFF[t.diff];
+    tag.className = `tag-x ${t.diff}`;
+    tag.hidden = false;
+    document.getElementById("tech-back-btn-x").hidden = false;
+    let html = "";
+    html += `<div class="tech-key-idea-x">
+      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5C5.5 1.5 4 3.5 4 5.6c0 1.4.7 2.5 1.6 3.4v2H10.4v-2c.9-.9 1.6-2 1.6-3.4 0-2.1-1.5-4.1-4-4.1z"/><path d="M6 13h4M6.5 14.5h3"/></svg>
+      <div>${t.keyIdea}</div></div>`;
+    html += `<div class="tech-section-x"><div class="label">What it is</div><p>${t.summary}</p></div>`;
+    html += `<div class="tech-section-x"><div class="label">Walk-through</div>${techRenderMiniGrid(t.grid)}`;
+    if (t.walk && t.walk.length){
+      html += `<ol class="tech-walk-x">`;
+      for (const s of t.walk) html += `<li>${s}</li>`;
+      html += `</ol>`;
+    }
+    html += `</div>`;
+    html += `<div class="tech-section-x"><div class="label">How to spot it</div><ul>${t.spot.map(s => `<li>${s}</li>`).join("")}</ul></div>`;
+    html += `<div class="tech-section-x"><div class="label">Why it works</div><p>${t.why}</p></div>`;
+    document.getElementById("tech-body-x").innerHTML = html;
+    document.getElementById("tech-drawer-x").scrollTop = 0;
+  }
+
+  function openTechDrawer(targetId){
+    document.getElementById("tech-drawer-x").classList.add("open");
+    if (targetId) techShowDetail(targetId);
+    else techRenderList();
+  }
+  function closeTechDrawer(){
+    document.getElementById("tech-drawer-x").classList.remove("open");
   }
 
   // Init
