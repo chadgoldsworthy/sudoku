@@ -250,6 +250,17 @@
     0%, 100% { box-shadow: inset 0 0 0 2px var(--hint); }
     50%      { box-shadow: inset 0 0 0 2px var(--hint), 0 0 0 6px rgba(245,166,35,0.22); }
   }
+  /* Step-walkthrough role highlights — coloured per the part the cell plays
+     in the technique. Pivot=indigo (anchor), pincer=teal (partner),
+     target=red (elimination), context=soft yellow (the unit being scanned). */
+  .ca-x.hint-context  { background: var(--hint-unit); }
+  .ca-x.hint-pivot    { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); z-index: 1; }
+  .ca-x.hint-pincer   { background: rgba(22,160,133,0.18); box-shadow: inset 0 0 0 2px var(--success); z-index: 1; }
+  .ca-x.hint-target   { background: var(--wrong-soft); box-shadow: inset 0 0 0 2px var(--wrong); z-index: 1; }
+  .ca-x .pen-x span.cand-pivot  { color: var(--accent); font-weight: 700; background: var(--accent-soft); border-radius: 3px; }
+  .ca-x .pen-x span.cand-share  { color: var(--success); font-weight: 700; background: rgba(22,160,133,0.18); border-radius: 3px; }
+  .ca-x .pen-x span.cand-elim   { color: var(--wrong); font-weight: 700; background: var(--wrong-soft); border-radius: 3px; text-decoration: line-through; }
+  .ca-x .pen-x span.cand-focus  { color: var(--hint); font-weight: 700; background: rgba(245,166,35,0.20); border-radius: 3px; }
   .ca-x .v { color: var(--text); }
   .ca-x .u { color: var(--user); font-weight: 600; }
   .ca-x .w { color: var(--wrong); font-weight: 600; }
@@ -1246,6 +1257,44 @@
     color: var(--hint-text-2); text-decoration: underline; margin-top: 8px;
     cursor: pointer; touch-action: manipulation;
   }
+  /* Step-walkthrough additions inside the hint card */
+  .hint-pop-x h4 .step-pill-x {
+    margin-left: auto;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--hint-text-2);
+    background: rgba(245, 166, 35, 0.18);
+    border-radius: 999px;
+    padding: 3px 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+  .hint-step-dots-x {
+    display: flex; gap: 5px; align-items: center; margin-bottom: 10px;
+  }
+  .hint-step-dots-x .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: rgba(245,166,35,0.25);
+    transition: background 0.18s ease, transform 0.18s ease;
+  }
+  .hint-step-dots-x .dot.active { background: var(--hint); transform: scale(1.3); }
+  .hint-pop-x .chip-pivot,
+  .hint-pop-x .chip-pincer,
+  .hint-pop-x .chip-target,
+  .hint-pop-x .chip-focus {
+    display: inline-block;
+    padding: 0 5px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .hint-pop-x .chip-pivot  { background: var(--accent-soft); color: var(--accent-strong); }
+  .hint-pop-x .chip-pincer { background: rgba(22,160,133,0.18); color: var(--success); }
+  .hint-pop-x .chip-target { background: var(--wrong-soft); color: var(--wrong); }
+  .hint-pop-x .chip-focus  { background: rgba(245,166,35,0.22); color: var(--hint-text-2); }
+  .hint-btn-x[disabled] { opacity: 0.4; cursor: default; }
+  .hint-btn-x.primary.done { background: var(--success); border-color: var(--success); }
 </style>
 </head>
 <body>
@@ -2607,6 +2656,22 @@
     const multi = state.multiCells || [];
     const multiSet = new Set(multi.map(p => p.r * 9 + p.c));
     const isMulti = multi.length > 1;
+
+    // Resolve the active hint step's role assignments. Cells map to a single
+    // class (last-wins so terminal roles like "focus" override earlier ones).
+    // Candidates map (r*9+c)→(digit→role), applied to pencil marks below.
+    const hintCellRole = new Map();
+    const hintCandRole = new Map();
+    if (h && h.steps && h.steps[h.step || 0]){
+      const step = h.steps[h.step || 0];
+      for (const p of (step.cells || [])) hintCellRole.set(p.r * 9 + p.c, p.role);
+      for (const p of (step.candidates || [])){
+        const k = p.r * 9 + p.c;
+        let m = hintCandRole.get(k);
+        if (!m){ m = new Map(); hintCandRole.set(k, m); }
+        m.set(p.d, p.role);
+      }
+    }
     // Find the only remaining empty (user-fillable) cell, if any, for the
     // last-cell-anticipation breathing animation.
     let onlyEmpty = null;
@@ -2638,17 +2703,12 @@
         const isSame = !isMulti && sel && !isSel && state.toggles.highlightSameNumber && selVal !== 0 && state.values[r][c] === selVal;
 
         if (h){
-          const isFocus = h.r===r && h.c===c;
-          const isPattern = !!(h.patternCells && h.patternCells.some(p => p.r === r && p.c === c));
-          let isUnit = false;
-          if (h.technique){
-            // For technique hints: tint pattern cells but no full-unit tint (would be visually noisy).
-          } else if (h.type === "row") isUnit = h.unitIdx === r;
-          else if (h.type === "col") isUnit = h.unitIdx === c;
-          else if (h.type === "box") isUnit = (Math.floor(r/3)*3 + Math.floor(c/3)) === h.unitIdx;
-          if (isFocus) cell.classList.add("hint-focus");
-          else if (isPattern) cell.classList.add("hint-pattern");
-          else if (isUnit) cell.classList.add("hint-unit");
+          const role = hintCellRole.get(r * 9 + c);
+          if (role === "focus") cell.classList.add("hint-focus");
+          else if (role === "pivot") cell.classList.add("hint-pivot");
+          else if (role === "pincer") cell.classList.add("hint-pincer");
+          else if (role === "target") cell.classList.add("hint-target");
+          else if (role === "context") cell.classList.add("hint-context");
         } else {
           // User-applied cell color sits beneath selection/peer highlights.
           const cb = state.cellColors && state.cellColors[r][c];
@@ -2676,6 +2736,11 @@
           const userMarks = state.pencils[r][c];
           const marks = new Set(userMarks);
           if (state.toggles.autoPencil) getCandidates(r, c).forEach(d => marks.add(d));
+          // For the placement step of a hint, the cell is empty in `pencils`
+          // (or may not contain the digit), but we still want to show the
+          // about-to-place digit as a focused candidate. Force-add it.
+          const candRoles = hintCandRole.get(r * 9 + c);
+          if (candRoles) for (const d of candRoles.keys()) marks.add(d);
           if (marks.size > 0){
             const colorMap = state.pencilColors && state.pencilColors[r][c];
             let html = `<div class="pen-x">`;
@@ -2683,7 +2748,12 @@
               const has = marks.has(n);
               const hl = has && selVal !== 0 && n === selVal;
               const colorId = has && colorMap ? colorMap.get(n) : null;
-              const cls = [hl ? "hl" : null, colorId ? "cm-" + colorId : null].filter(Boolean).join(" ");
+              const candRole = candRoles ? candRoles.get(n) : null;
+              const cls = [
+                hl ? "hl" : null,
+                colorId ? "cm-" + colorId : null,
+                candRole ? "cand-" + candRole : null,
+              ].filter(Boolean).join(" ");
               const clsAttr = cls ? ` class="${cls}"` : "";
               html += `<span${clsAttr}>${has ? n : ""}</span>`;
             }
@@ -3334,14 +3404,26 @@
     const h = findHint();
     if (!h){ showToast("No simple hint found at this stage."); return; }
     state.hintsUsed++;
-    state.hint = Object.assign({}, h, { level: 1 });
+    state.hint = Object.assign({}, h, { step: 0 });
+    state.hint.steps = buildHintSteps(state.hint);
     renderHintPop();
     render();
   }
-  function expandHint(){
+  function nextHintStep(){
     if (!state.hint) return;
-    state.hint.level = 2;
-    renderHintPop();
+    if (state.hint.step < state.hint.steps.length - 1){
+      state.hint.step++;
+      renderHintPop();
+      render();
+    }
+  }
+  function prevHintStep(){
+    if (!state.hint) return;
+    if (state.hint.step > 0){
+      state.hint.step--;
+      renderHintPop();
+      render();
+    }
   }
   function applyHint(){
     if (!state.hint) return;
@@ -3475,68 +3557,559 @@
     return `In ${BOX_NAMES[h.unitIdx]} box, after this elimination ${h.digit} can only fit at ${cellLabel(h.r, h.c)}.`;
   }
 
+  // Inline-coloured cell label used inside the step body (e.g. "R1C7").
+  // Role decides the colour swatch behind the label, matching the on-grid
+  // highlight class for the same cell.
+  function chipCell(r, c, role){ return `<span class="chip-${role}">${cellLabel(r, c)}</span>`; }
+
+  // Compute the cells that share a row, column or box with both of the given
+  // cells (excluding the two cells themselves). Used to surface the visible
+  // peers of a Y-Wing/XYZ-Wing pincer pair.
+  function commonPeers(a, b){
+    const out = [];
+    for (let r = 0; r < 9; r++){
+      for (let c = 0; c < 9; c++){
+        if ((r === a.r && c === a.c) || (r === b.r && c === b.c)) continue;
+        const seesA = r === a.r || c === a.c || (Math.floor(r/3) === Math.floor(a.r/3) && Math.floor(c/3) === Math.floor(a.c/3));
+        const seesB = r === b.r || c === b.c || (Math.floor(r/3) === Math.floor(b.r/3) && Math.floor(c/3) === Math.floor(b.c/3));
+        if (seesA && seesB) out.push({ r, c });
+      }
+    }
+    return out;
+  }
+
+  // Build the per-step walkthrough for the current hint. Each step returns:
+  //   { title, body (HTML), cells: [{r,c,role}], candidates: [{r,c,d,role}] }
+  // The final step is always the placement step (Apply button).
+  function buildHintSteps(h){
+    const steps = [];
+    const t = h.technique;
+    const placeChip = chipCell(h.r, h.c, "focus");
+    const finalCells = [{ r: h.r, c: h.c, role: "focus" }];
+    const finalCands = [{ r: h.r, c: h.c, d: h.digit, role: "focus" }];
+
+    // ───── No technique (singles) ─────────────────────────────────────────
+    if (!t){
+      if (h.type === "naked"){
+        // Peers of the focus cell — its row, column, and box.
+        const peers = [];
+        for (let i = 0; i < 9; i++){
+          if (i !== h.c) peers.push({ r: h.r, c: i, role: "context" });
+          if (i !== h.r) peers.push({ r: i, c: h.c, role: "context" });
+        }
+        const br = Math.floor(h.r/3)*3, bc = Math.floor(h.c/3)*3;
+        for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++){
+          const rr = br+i, cc = bc+j;
+          if (rr === h.r && cc === h.c) continue;
+          if (peers.some(p => p.r === rr && p.c === cc)) continue;
+          peers.push({ r: rr, c: cc, role: "context" });
+        }
+        steps.push({
+          title: "Naked Single — Step 1: scan",
+          body: `Look for a cell whose row, column and box together already contain <b>eight</b> different digits. Whatever is missing has to go in that cell.`,
+          cells: peers.concat([{ r: h.r, c: h.c, role: "pivot" }]),
+        });
+        steps.push({
+          title: `Naked Single — Step 2: place`,
+          body: `Cell ${placeChip}'s peers already use every digit except <b>${h.digit}</b>. So <b>${h.digit}</b> goes here.`,
+          cells: finalCells,
+          candidates: finalCands,
+          isPlacement: true,
+        });
+      } else {
+        const unitLbl = h.type === "row" ? `row ${h.unitIdx + 1}` :
+                        h.type === "col" ? `column ${h.unitIdx + 1}` :
+                        `the ${BOX_NAMES[h.unitIdx]} box`;
+        const unitCells = [];
+        if (h.type === "row") for (let c = 0; c < 9; c++) unitCells.push({ r: h.unitIdx, c, role: "context" });
+        else if (h.type === "col") for (let r = 0; r < 9; r++) unitCells.push({ r, c: h.unitIdx, role: "context" });
+        else {
+          const br = Math.floor(h.unitIdx/3)*3, bc = (h.unitIdx%3)*3;
+          for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) unitCells.push({ r: br+i, c: bc+j, role: "context" });
+        }
+        steps.push({
+          title: `Hidden Single — Step 1: pick a unit + digit`,
+          body: `In ${unitLbl}, ask: where can <b>${h.digit}</b> still go?`,
+          cells: unitCells,
+        });
+        steps.push({
+          title: `Hidden Single — Step 2: scan`,
+          body: `Every empty cell in ${unitLbl} already has a <b>${h.digit}</b> in its row, column or box — except ${chipCell(h.r, h.c, "pincer")}.`,
+          cells: unitCells.filter(p => !(p.r === h.r && p.c === h.c)).concat([{ r: h.r, c: h.c, role: "pincer" }]),
+          candidates: [{ r: h.r, c: h.c, d: h.digit, role: "share" }],
+        });
+        steps.push({
+          title: `Hidden Single — Step 3: place`,
+          body: `Only one cell qualifies, so <b>${h.digit}</b> goes at ${placeChip}.`,
+          cells: finalCells,
+          candidates: finalCands,
+          isPlacement: true,
+        });
+      }
+      return steps;
+    }
+
+    // Common helpers used by technique branches
+    const elimsCells = (h.eliminations || []).map(e => ({ r: e.r, c: e.c, role: "target" }));
+    const elimsCands = (h.eliminations || []).map(e => ({ r: e.r, c: e.c, d: e.digit, role: "elim" }));
+    const patternRoles = (role) => (h.patternCells || []).map(p => ({ ...p, role }));
+    const cellLabels = (cells) => cells.map(p => chipCell(p.r, p.c, "pincer")).join(", ");
+
+    // ───── Pointing pair / triple ─────────────────────────────────────────
+    if (t === "pointing"){
+      const boxIdx = h.patternUnit.idx;
+      const boxName = BOX_NAMES[boxIdx];
+      const lineWord = h.lineUnit.type === "row" ? `row ${h.lineUnit.idx + 1}` : `column ${h.lineUnit.idx + 1}`;
+      const boxCells = [];
+      const br = Math.floor(boxIdx/3)*3, bc = (boxIdx%3)*3;
+      for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) boxCells.push({ r: br+i, c: bc+j, role: "context" });
+      steps.push({
+        title: `Pointing — Step 1: scan a box`,
+        body: `In one 3×3 box, find a digit whose remaining candidates all sit on the <b>same row or column</b>.`,
+        cells: boxCells,
+      });
+      steps.push({
+        title: `Pointing — Step 2: identify`,
+        body: `In the <b>${boxName}</b> box, digit <b>${h.patternDigit}</b> only fits at ${cellLabels(h.patternCells)} — all on ${lineWord}.`,
+        cells: boxCells.filter(p => !h.patternCells.some(q => q.r === p.r && q.c === p.c)).concat(patternRoles("pincer")),
+        candidates: h.patternCells.map(p => ({ r: p.r, c: p.c, d: h.patternDigit, role: "share" })),
+      });
+      steps.push({
+        title: `Pointing — Step 3: trace the logic`,
+        body: `Wherever <b>${h.patternDigit}</b> lands in this box, it'll be on ${lineWord}. So that line already has its <b>${h.patternDigit}</b> inside the box — just not yet pinned to a cell.`,
+        cells: patternRoles("pincer"),
+        candidates: h.patternCells.map(p => ({ r: p.r, c: p.c, d: h.patternDigit, role: "share" })),
+      });
+      steps.push({
+        title: `Pointing — Step 4: eliminate & place`,
+        body: `So <b>${h.patternDigit}</b> can't appear elsewhere on ${lineWord}. After clearing those candidates, place <b>${h.digit}</b> at ${placeChip}.`,
+        cells: patternRoles("pincer").concat(elimsCells).concat(finalCells),
+        candidates: elimsCands.concat(finalCands),
+        isPlacement: true,
+      });
+      return steps;
+    }
+
+    // ───── Box / line reduction ───────────────────────────────────────────
+    if (t === "box-line"){
+      const lineWord = h.patternUnit.type === "row" ? `row ${h.patternUnit.idx + 1}` : `column ${h.patternUnit.idx + 1}`;
+      const boxName = BOX_NAMES[h.lineUnit.idx];
+      const lineCells = [];
+      if (h.patternUnit.type === "row") for (let c = 0; c < 9; c++) lineCells.push({ r: h.patternUnit.idx, c, role: "context" });
+      else for (let r = 0; r < 9; r++) lineCells.push({ r, c: h.patternUnit.idx, role: "context" });
+      steps.push({
+        title: `Box/Line — Step 1: scan a line`,
+        body: `Pick a row or column. For a digit missing from it, find every cell where it can still go.`,
+        cells: lineCells,
+      });
+      steps.push({
+        title: `Box/Line — Step 2: identify`,
+        body: `In <b>${lineWord}</b>, digit <b>${h.patternDigit}</b> only fits at ${cellLabels(h.patternCells)} — all inside the <b>${boxName}</b> box.`,
+        cells: lineCells.filter(p => !h.patternCells.some(q => q.r === p.r && q.c === p.c)).concat(patternRoles("pincer")),
+        candidates: h.patternCells.map(p => ({ r: p.r, c: p.c, d: h.patternDigit, role: "share" })),
+      });
+      steps.push({
+        title: `Box/Line — Step 3: trace the logic`,
+        body: `Wherever <b>${h.patternDigit}</b> lands in ${lineWord}, it must be inside the <b>${boxName}</b> box. So the box already has its <b>${h.patternDigit}</b> on this line.`,
+        cells: patternRoles("pincer"),
+        candidates: h.patternCells.map(p => ({ r: p.r, c: p.c, d: h.patternDigit, role: "share" })),
+      });
+      steps.push({
+        title: `Box/Line — Step 4: eliminate & place`,
+        body: `So <b>${h.patternDigit}</b> can't appear elsewhere in the <b>${boxName}</b> box. After clearing those candidates, place <b>${h.digit}</b> at ${placeChip}.`,
+        cells: patternRoles("pincer").concat(elimsCells).concat(finalCells),
+        candidates: elimsCands.concat(finalCands),
+        isPlacement: true,
+      });
+      return steps;
+    }
+
+    // ───── Naked pair / triple / quad ─────────────────────────────────────
+    if (t === "naked-pair" || t === "naked-triple" || t === "naked-quad"){
+      const n = h.patternCells.length;
+      const word = n === 2 ? "pair" : (n === 3 ? "triple" : "quad");
+      const unitLbl = unitName(h.patternUnit);
+      steps.push({
+        title: `Naked ${word} — Step 1: scan`,
+        body: `Find <b>${n}</b> cells in a row, column or box whose pencil marks together contain <b>only ${n} different digits</b>.`,
+      });
+      steps.push({
+        title: `Naked ${word} — Step 2: identify`,
+        body: `In <b>${unitLbl}</b>, the cells ${cellLabels(h.patternCells)} together hold only the digits <b>{${h.patternDigits.join(", ")}}</b>.`,
+        cells: patternRoles("pincer"),
+        candidates: h.patternCells.flatMap(p => h.patternDigits.map(d => ({ r: p.r, c: p.c, d, role: "share" }))),
+      });
+      steps.push({
+        title: `Naked ${word} — Step 3: trace the logic`,
+        body: `Those <b>${n}</b> digits are split across those <b>${n}</b> cells — we don't know which way around, but they're <b>used up</b> there.`,
+        cells: patternRoles("pincer"),
+        candidates: h.patternCells.flatMap(p => h.patternDigits.map(d => ({ r: p.r, c: p.c, d, role: "share" }))),
+      });
+      steps.push({
+        title: `Naked ${word} — Step 4: eliminate & place`,
+        body: `So those digits can be removed from every other cell in ${unitLbl}. After clearing them, place <b>${h.digit}</b> at ${placeChip}.`,
+        cells: patternRoles("pincer").concat(elimsCells).concat(finalCells),
+        candidates: elimsCands.concat(finalCands),
+        isPlacement: true,
+      });
+      return steps;
+    }
+
+    // ───── Hidden pair / triple / quad ────────────────────────────────────
+    if (t === "hidden-pair" || t === "hidden-triple" || t === "hidden-quad"){
+      const n = h.patternCells.length;
+      const word = n === 2 ? "pair" : (n === 3 ? "triple" : "quad");
+      const unitLbl = unitName(h.patternUnit);
+      steps.push({
+        title: `Hidden ${word} — Step 1: scan`,
+        body: `Find <b>${n}</b> digits in a row, column or box that can only go in the <b>same ${n} cells</b>.`,
+      });
+      steps.push({
+        title: `Hidden ${word} — Step 2: identify`,
+        body: `In <b>${unitLbl}</b>, the digits <b>{${h.patternDigits.join(", ")}}</b> only fit at ${cellLabels(h.patternCells)}.`,
+        cells: patternRoles("pincer"),
+        candidates: h.patternCells.flatMap(p => h.patternDigits.map(d => ({ r: p.r, c: p.c, d, role: "share" }))),
+      });
+      steps.push({
+        title: `Hidden ${word} — Step 3: trace the logic`,
+        body: `Those <b>${n}</b> cells are now <b>locked</b> to those <b>${n}</b> digits. Anything else penciled in those cells can be cleared out.`,
+        cells: patternRoles("pincer"),
+        candidates: h.patternCells.flatMap(p => h.patternDigits.map(d => ({ r: p.r, c: p.c, d, role: "share" }))),
+      });
+      steps.push({
+        title: `Hidden ${word} — Step 4: eliminate & place`,
+        body: `Strip the other candidates out of those cells. After that, <b>${h.digit}</b> goes at ${placeChip}.`,
+        cells: patternRoles("pincer").concat(elimsCells).concat(finalCells),
+        candidates: elimsCands.concat(finalCands),
+        isPlacement: true,
+      });
+      return steps;
+    }
+
+    // ───── X-Wing ─────────────────────────────────────────────────────────
+    if (t === "x-wing"){
+      const baseRowsCols = h.patternUnit.type === "row-pair" ? "rows" : "columns";
+      const elimRowsCols = h.patternUnit.type === "row-pair" ? "columns" : "rows";
+      const baseLabels = h.patternUnit.idx.map(i => i + 1).join(" and ");
+      const elimLabels = h.lineUnit.idx.map(i => i + 1).join(" and ");
+      steps.push({
+        title: `X-Wing — Step 1: scan rows`,
+        body: `Pick a digit. For each ${baseRowsCols.slice(0,-1)}, list the cells where the digit can still go. You're looking for two ${baseRowsCols} where the digit fits in <b>the same two ${elimRowsCols}</b>.`,
+      });
+      steps.push({
+        title: `X-Wing — Step 2: find the rectangle`,
+        body: `For digit <b>${h.patternDigit}</b>: ${baseRowsCols.slice(0,1).toUpperCase() + baseRowsCols.slice(1)} <b>${baseLabels}</b> both have it only at ${elimRowsCols} <b>${elimLabels}</b>. The four corners ${cellLabels(h.patternCells)} form a rectangle.`,
+        cells: patternRoles("pincer"),
+        candidates: h.patternCells.map(p => ({ r: p.r, c: p.c, d: h.patternDigit, role: "share" })),
+      });
+      steps.push({
+        title: `X-Wing — Step 3: trace the logic`,
+        body: `Each of those ${baseRowsCols} needs a <b>${h.patternDigit}</b>, and it can only land in one of two ${elimRowsCols.slice(0,-1)}s. Whichever way the two ${baseRowsCols} pick, <b>both ${elimRowsCols} ${elimLabels} get one ${h.patternDigit} from this rectangle</b>.`,
+        cells: patternRoles("pincer"),
+        candidates: h.patternCells.map(p => ({ r: p.r, c: p.c, d: h.patternDigit, role: "share" })),
+      });
+      steps.push({
+        title: `X-Wing — Step 4: eliminate & place`,
+        body: `So no other ${baseRowsCols.slice(0,-1)} can place <b>${h.patternDigit}</b> in ${elimRowsCols} <b>${elimLabels}</b>. Clear those candidates, then place <b>${h.digit}</b> at ${placeChip}.`,
+        cells: patternRoles("pincer").concat(elimsCells).concat(finalCells),
+        candidates: elimsCands.concat(finalCands),
+        isPlacement: true,
+      });
+      return steps;
+    }
+
+    // ───── Y-Wing ─────────────────────────────────────────────────────────
+    if (t === "y-wing"){
+      const [pivot, pa, pb] = h.patternCells;
+      const z = h.patternDigit;
+      // Derive X and Y (the pivot's two candidates) from patternDigits = [a,b,z] sorted.
+      const others = h.patternDigits.filter(d => d !== z);
+      const X = others[0], Y = others[1];
+      // Pincer A shares X with pivot (so its second digit besides X is z).
+      // Pincer B shares Y with pivot.
+      // To avoid having to rerun the solver, we just call them "pincer" without
+      // separating which is which — the visible pencils make it clear.
+      const pivotChip  = chipCell(pivot.r, pivot.c, "pivot");
+      const paChip     = chipCell(pa.r, pa.c, "pincer");
+      const pbChip     = chipCell(pb.r, pb.c, "pincer");
+      steps.push({
+        title: `Y-Wing — Step 1: find a pivot`,
+        body: `Find a cell with <b>exactly two</b> candidates. Call them <b>X</b> and <b>Y</b>.`,
+      });
+      steps.push({
+        title: `Y-Wing — Step 2: identify pivot`,
+        body: `${pivotChip} has just <b>{${X}, ${Y}}</b> — set <b>X = ${X}</b>, <b>Y = ${Y}</b>.`,
+        cells: [{ r: pivot.r, c: pivot.c, role: "pivot" }],
+        candidates: [{ r: pivot.r, c: pivot.c, d: X, role: "pivot" }, { r: pivot.r, c: pivot.c, d: Y, role: "pivot" }],
+      });
+      steps.push({
+        title: `Y-Wing — Step 3: find pincer A`,
+        body: `Find a 2-candidate cell that <b>sees the pivot</b>: it shares one of the pivot's digits and brings a new digit <b>Z</b>. ${paChip} sees the pivot and shares one digit — its other digit is <b>Z = ${z}</b>.`,
+        cells: [{ r: pivot.r, c: pivot.c, role: "pivot" }, { r: pa.r, c: pa.c, role: "pincer" }],
+        candidates: [
+          { r: pivot.r, c: pivot.c, d: X, role: "pivot" },
+          { r: pivot.r, c: pivot.c, d: Y, role: "pivot" },
+          { r: pa.r, c: pa.c, d: z, role: "share" },
+        ],
+      });
+      steps.push({
+        title: `Y-Wing — Step 4: find pincer B`,
+        body: `Find another 2-candidate peer of the pivot. It shares the pivot's <i>other</i> digit and brings the <b>same Z = ${z}</b>. ${pbChip} fits — both pincers share <b>${z}</b>.`,
+        cells: [
+          { r: pivot.r, c: pivot.c, role: "pivot" },
+          { r: pa.r, c: pa.c, role: "pincer" },
+          { r: pb.r, c: pb.c, role: "pincer" },
+        ],
+        candidates: [
+          { r: pivot.r, c: pivot.c, d: X, role: "pivot" },
+          { r: pivot.r, c: pivot.c, d: Y, role: "pivot" },
+          { r: pa.r, c: pa.c, d: z, role: "share" },
+          { r: pb.r, c: pb.c, d: z, role: "share" },
+        ],
+      });
+      steps.push({
+        title: `Y-Wing — Step 5: trace the logic`,
+        body: `<b>Whatever value the pivot takes, ${z} ends up in one of the pincers.</b> If the pivot is X, the pincer sharing Y must be ${z}; if the pivot is Y, the pincer sharing X must be ${z}. Either way, one of the green cells holds <b>${z}</b>.`,
+        cells: [
+          { r: pivot.r, c: pivot.c, role: "pivot" },
+          { r: pa.r, c: pa.c, role: "pincer" },
+          { r: pb.r, c: pb.c, role: "pincer" },
+        ],
+        candidates: [
+          { r: pa.r, c: pa.c, d: z, role: "share" },
+          { r: pb.r, c: pb.c, d: z, role: "share" },
+        ],
+      });
+      steps.push({
+        title: `Y-Wing — Step 6: eliminate & place`,
+        body: `So any cell that sees <b>both</b> pincers cannot be <b>${z}</b>. Remove ${z} from those cells, then place <b>${h.digit}</b> at ${placeChip}.`,
+        cells: [
+          { r: pivot.r, c: pivot.c, role: "pivot" },
+          { r: pa.r, c: pa.c, role: "pincer" },
+          { r: pb.r, c: pb.c, role: "pincer" },
+        ].concat(elimsCells).concat(finalCells),
+        candidates: [
+          { r: pa.r, c: pa.c, d: z, role: "share" },
+          { r: pb.r, c: pb.c, d: z, role: "share" },
+        ].concat(elimsCands).concat(finalCands),
+        isPlacement: true,
+      });
+      return steps;
+    }
+
+    // ───── XYZ-Wing ───────────────────────────────────────────────────────
+    if (t === "xyz-wing"){
+      const [pivot, pa, pb] = h.patternCells;
+      const z = h.patternDigit;
+      const pivotChip  = chipCell(pivot.r, pivot.c, "pivot");
+      const paChip     = chipCell(pa.r, pa.c, "pincer");
+      const pbChip     = chipCell(pb.r, pb.c, "pincer");
+      steps.push({
+        title: `XYZ-Wing — Step 1: find a pivot`,
+        body: `Like Y-Wing, but the pivot has <b>three</b> candidates {X, Y, Z}.`,
+      });
+      steps.push({
+        title: `XYZ-Wing — Step 2: identify pivot + pincers`,
+        body: `${pivotChip} has <b>{${h.patternDigits.join(", ")}}</b>. Pincers ${paChip} and ${pbChip} both see the pivot and each share <b>${z}</b> with it.`,
+        cells: [
+          { r: pivot.r, c: pivot.c, role: "pivot" },
+          { r: pa.r, c: pa.c, role: "pincer" },
+          { r: pb.r, c: pb.c, role: "pincer" },
+        ],
+        candidates: [
+          ...h.patternDigits.map(d => ({ r: pivot.r, c: pivot.c, d, role: "pivot" })),
+          { r: pa.r, c: pa.c, d: z, role: "share" },
+          { r: pb.r, c: pb.c, d: z, role: "share" },
+        ],
+      });
+      steps.push({
+        title: `XYZ-Wing — Step 3: trace the logic`,
+        body: `Whichever value the pivot takes, <b>${z}</b> must appear in the pivot or one of the pincers. So <b>at least one of these three cells is ${z}</b>.`,
+        cells: [
+          { r: pivot.r, c: pivot.c, role: "pivot" },
+          { r: pa.r, c: pa.c, role: "pincer" },
+          { r: pb.r, c: pb.c, role: "pincer" },
+        ],
+        candidates: [
+          { r: pivot.r, c: pivot.c, d: z, role: "pivot" },
+          { r: pa.r, c: pa.c, d: z, role: "share" },
+          { r: pb.r, c: pb.c, d: z, role: "share" },
+        ],
+      });
+      steps.push({
+        title: `XYZ-Wing — Step 4: eliminate & place`,
+        body: `Any cell that sees <b>all three</b> cannot be ${z}. Clear those, then place <b>${h.digit}</b> at ${placeChip}.`,
+        cells: [
+          { r: pivot.r, c: pivot.c, role: "pivot" },
+          { r: pa.r, c: pa.c, role: "pincer" },
+          { r: pb.r, c: pb.c, role: "pincer" },
+        ].concat(elimsCells).concat(finalCells),
+        candidates: elimsCands.concat(finalCands),
+        isPlacement: true,
+      });
+      return steps;
+    }
+
+    // ───── Skyscraper ─────────────────────────────────────────────────────
+    if (t === "skyscraper"){
+      const base = h.patternCells.slice(0, 2);
+      const roof = h.patternCells.slice(2);
+      steps.push({
+        title: `Skyscraper — Step 1: scan strong links`,
+        body: `Pick a digit. Find two rows or columns where it has candidates in <b>exactly two cells</b>.`,
+      });
+      steps.push({
+        title: `Skyscraper — Step 2: identify`,
+        body: `For digit <b>${h.patternDigit}</b>, two strong links share a "base" line at ${base.map(p => chipCell(p.r, p.c, "pincer")).join(" and ")}. The other endpoints (the "roof") are ${roof.map(p => chipCell(p.r, p.c, "pincer")).join(" and ")}.`,
+        cells: patternRoles("pincer"),
+        candidates: h.patternCells.map(p => ({ r: p.r, c: p.c, d: h.patternDigit, role: "share" })),
+      });
+      steps.push({
+        title: `Skyscraper — Step 3: trace the logic`,
+        body: `The two links can't both place <b>${h.patternDigit}</b> on the base (it would repeat in that line). So at least one places it on the roof — meaning <b>one of the roof cells must be ${h.patternDigit}</b>.`,
+        cells: roof.map(p => ({ ...p, role: "pincer" })),
+        candidates: roof.map(p => ({ r: p.r, c: p.c, d: h.patternDigit, role: "share" })),
+      });
+      steps.push({
+        title: `Skyscraper — Step 4: eliminate & place`,
+        body: `Any cell that sees <b>both roofs</b> cannot be <b>${h.patternDigit}</b>. Clear them, then place <b>${h.digit}</b> at ${placeChip}.`,
+        cells: roof.map(p => ({ ...p, role: "pincer" })).concat(elimsCells).concat(finalCells),
+        candidates: elimsCands.concat(finalCands),
+        isPlacement: true,
+      });
+      return steps;
+    }
+
+    // ───── Swordfish ──────────────────────────────────────────────────────
+    if (t === "swordfish"){
+      const baseLines = h.patternUnit.type === "row-triple" ? "rows" : "columns";
+      const elimLines = h.patternUnit.type === "row-triple" ? "columns" : "rows";
+      const baseLbls = h.patternUnit.idx.map(i => i + 1).join(", ");
+      const elimLbls = h.lineUnit.idx.map(i => i + 1).join(", ");
+      steps.push({
+        title: `Swordfish — Step 1: scan`,
+        body: `Pick a digit. Find <b>three ${baseLines}</b> where the digit's candidates only sit in the <b>same three ${elimLines}</b>.`,
+      });
+      steps.push({
+        title: `Swordfish — Step 2: identify`,
+        body: `For digit <b>${h.patternDigit}</b>: ${baseLines} <b>${baseLbls}</b> all restrict it to ${elimLines} <b>${elimLbls}</b>.`,
+        cells: patternRoles("pincer"),
+        candidates: h.patternCells.map(p => ({ r: p.r, c: p.c, d: h.patternDigit, role: "share" })),
+      });
+      steps.push({
+        title: `Swordfish — Step 3: trace the logic`,
+        body: `Three ${baseLines.slice(0,-1)}s, three ${elimLines.slice(0,-1)}s — three of the nine intersection cells will hold <b>${h.patternDigit}</b>, exactly one per ${baseLines.slice(0,-1)}.`,
+        cells: patternRoles("pincer"),
+        candidates: h.patternCells.map(p => ({ r: p.r, c: p.c, d: h.patternDigit, role: "share" })),
+      });
+      steps.push({
+        title: `Swordfish — Step 4: eliminate & place`,
+        body: `So <b>${h.patternDigit}</b> can't appear elsewhere in ${elimLines} <b>${elimLbls}</b>. Clear them, then place <b>${h.digit}</b> at ${placeChip}.`,
+        cells: patternRoles("pincer").concat(elimsCells).concat(finalCells),
+        candidates: elimsCands.concat(finalCands),
+        isPlacement: true,
+      });
+      return steps;
+    }
+
+    // ───── Unique Rectangle Type 1 ────────────────────────────────────────
+    if (t === "ur-1"){
+      steps.push({
+        title: `Unique Rectangle — Step 1: spot`,
+        body: `Find <b>four cells</b> at the corners of a rectangle, sitting in just <b>two boxes</b>, where three of them are restricted to the same two digits.`,
+      });
+      steps.push({
+        title: `Unique Rectangle — Step 2: identify`,
+        body: `${h.patternCells.map(p => chipCell(p.r, p.c, "pincer")).join(", ")} form the rectangle. Three are pinned to <b>{${h.patternDigits.join(", ")}}</b>; the fourth still allows them.`,
+        cells: patternRoles("pincer"),
+        candidates: h.patternCells.flatMap(p => h.patternDigits.map(d => ({ r: p.r, c: p.c, d, role: "share" }))),
+      });
+      steps.push({
+        title: `Unique Rectangle — Step 3: trace the logic`,
+        body: `If the fourth corner could also be <b>{${h.patternDigits.join(", ")}}</b>, the puzzle would have <b>two valid solutions</b>. Real Sudokus have exactly one — so this can't happen.`,
+        cells: patternRoles("pincer"),
+      });
+      steps.push({
+        title: `Unique Rectangle — Step 4: eliminate & place`,
+        body: `So <b>${h.patternDigits.join(" and ")}</b> are removed from the fourth corner. After that, <b>${h.digit}</b> goes at ${placeChip}.`,
+        cells: patternRoles("pincer").concat(elimsCells).concat(finalCells),
+        candidates: elimsCands.concat(finalCands),
+        isPlacement: true,
+      });
+      return steps;
+    }
+
+    // ───── Solver fallback ────────────────────────────────────────────────
+    if (t === "solver"){
+      steps.push({
+        title: `Beyond the built-in techniques`,
+        body: `This position needs a technique more advanced than the ones the app currently knows (e.g. forcing chains, colouring).`,
+      });
+      steps.push({
+        title: `Place from solution`,
+        body: `Falling back to the puzzle's stored solution. Place <b>${h.digit}</b> at ${placeChip}.`,
+        cells: finalCells,
+        candidates: finalCands,
+        isPlacement: true,
+      });
+      return steps;
+    }
+
+    // Fallback: single-step "place" if we somehow miss a technique above.
+    steps.push({
+      title: `Place ${h.digit} at ${cellLabel(h.r, h.c)}`,
+      body: describePlacement(h),
+      cells: finalCells,
+      candidates: finalCands,
+      isPlacement: true,
+    });
+    return steps;
+  }
+
   function renderHintPop(){
     const pop = document.getElementById("hint-pop-x");
     pop.classList.add("open");
     const h = state.hint;
     const bulb = `<span class="hint-icon-x"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5C5.5 1.5 4 3.5 4 5.6c0 1.4.7 2.5 1.6 3.4v2H10.4v-2c.9-.9 1.6-2 1.6-3.4 0-2.1-1.5-4.1-4-4.1z"/><path d="M6 13h4M6.5 14.5h3"/></svg></span>`;
-    let title = "", body = "";
-    if (h.technique){
-      const desc = describeTechnique(h);
-      if (h.level === 1){
-        title = desc.short;
-        body = desc.what;
-      } else {
-        title = `Place ${h.digit} at ${cellLabel(h.r, h.c)}`;
-        body = `${desc.deduce} ${describePlacement(h)}`;
-      }
-    } else if (h.level === 1){
-      if (h.type === "naked"){
-        title = "Naked single available";
-        body = "One empty cell on the board has only a single possible value.";
-      } else if (h.type === "row"){
-        title = `Hidden single in row ${h.unitIdx + 1}`;
-        body = "One digit in this row can only fit in a single cell.";
-      } else if (h.type === "col"){
-        title = `Hidden single in column ${h.unitIdx + 1}`;
-        body = "One digit in this column can only fit in a single cell.";
-      } else {
-        title = `Hidden single in the ${BOX_NAMES[h.unitIdx]} box`;
-        body = "One digit in this box can only fit in a single cell.";
-      }
-    } else {
-      const lbl = `row ${h.r + 1}, column ${h.c + 1}`;
-      if (h.type === "naked"){
-        title = `${h.digit} goes in ${lbl}`;
-        body = `Every other digit is blocked from this cell by its row, column or 3x3 box. Only ${h.digit} fits.`;
-      } else if (h.type === "row"){
-        title = `Place ${h.digit} in ${lbl}`;
-        body = `In row ${h.unitIdx + 1}, every other empty cell already has ${h.digit} blocked by its column or box. This is the only spot ${h.digit} can go.`;
-      } else if (h.type === "col"){
-        title = `Place ${h.digit} in ${lbl}`;
-        body = `In column ${h.unitIdx + 1}, every other empty cell already has ${h.digit} blocked by its row or box. This is the only spot ${h.digit} can go.`;
-      } else {
-        title = `Place ${h.digit} in ${lbl}`;
-        body = `In the ${BOX_NAMES[h.unitIdx]} box, every other empty cell already has ${h.digit} blocked by its row or column. This is the only spot ${h.digit} can go.`;
-      }
-    }
-    const primaryAct = h.level === 1 ? "more" : "apply";
-    const primaryLabel = h.level === 1 ? "See more" : "Apply";
-    // Map hint to a technique-guide entry id for the "Learn more" link.
+    const steps = h.steps || [];
+    const idx = h.step || 0;
+    const total = steps.length;
+    const cur = steps[idx] || { title: "", body: "" };
+
+    // "Learn more" link surfaces the canonical technique writeup. Show it only
+    // on the first step, since later steps already walk through the technique.
     let learnId = null;
     if (h.technique && h.technique !== "solver") learnId = h.technique;
     else if (!h.technique && h.type === "naked") learnId = "naked-single";
     else if (!h.technique && (h.type === "row" || h.type === "col" || h.type === "box")) learnId = "hidden-single";
-    const learnLink = (h.level === 1 && learnId)
+    const learnLink = (idx === 0 && learnId)
       ? `<a class="hint-learn-link-x" data-act="learn" data-learn="${learnId}">Learn more →</a>`
       : "";
+
+    const isLast = idx === total - 1;
+    const isPlacementStep = !!cur.isPlacement;
+    const nextLabel = isLast && isPlacementStep ? "Apply" : (isLast ? "Got it" : "Next →");
+    const nextAct   = isLast && isPlacementStep ? "apply" : (isLast ? "dismiss" : "next");
+    const primaryDone = isLast && !isPlacementStep ? " done" : "";
+
+    let dots = "";
+    if (total > 1){
+      for (let i = 0; i < total; i++){
+        dots += `<span class="dot${i === idx ? " active" : ""}"></span>`;
+      }
+    }
+
+    const stepPill = total > 1 ? `<span class="step-pill-x">${idx + 1} / ${total}</span>` : "";
+
     pop.innerHTML = `
-      <h4>${bulb}<span>${title}</span></h4>
-      <p>${body}</p>
+      <h4>${bulb}<span>${cur.title}</span>${stepPill}</h4>
+      <p>${cur.body}</p>
       ${learnLink}
+      ${total > 1 ? `<div class="hint-step-dots-x">${dots}</div>` : ""}
       <div class="hint-actions-x">
         <button type="button" class="hint-btn-x" data-act="dismiss">Dismiss</button>
-        <button type="button" class="hint-btn-x primary" data-act="${primaryAct}">${primaryLabel}</button>
+        ${idx > 0 ? `<button type="button" class="hint-btn-x" data-act="prev">← Back</button>` : ""}
+        <button type="button" class="hint-btn-x primary${primaryDone}" data-act="${nextAct}">${nextLabel}</button>
       </div>`;
   }
 
@@ -3934,7 +4507,8 @@
       const btn = e.target.closest("[data-act]");
       const act = btn && btn.dataset && btn.dataset.act;
       if (act === "dismiss") closeHintPop();
-      else if (act === "more") expandHint();
+      else if (act === "next") nextHintStep();
+      else if (act === "prev") prevHintStep();
       else if (act === "apply") applyHint();
       else if (act === "learn"){
         const id = btn.dataset.learn;
