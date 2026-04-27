@@ -1480,7 +1480,11 @@
 (function(){
   const DIFF_LABELS = { easy:"Easy", medium:"Medium", hard:"Hard", "extra-hard":"Extra hard", expert:"Expert" };
   const DIFF_ORDER = ["easy","medium","hard","extra-hard","expert"];
-  const DIFF_TARGETS = { easy: 40, medium: 32, hard: 28, "extra-hard": 25, expert: 23 };
+  // Clue-count guidance for the generator — NOT the source of truth for
+  // difficulty (that's done by solveAndGrade). Empirically tuned: at 28 clues
+  // the "hard" tier (triples / quads / X-Wing / Skyscraper as hardest) shows
+  // up around 5% of the time — much higher than at 26.
+  const DIFF_TARGETS = { easy: 38, medium: 30, hard: 28, "extra-hard": 24, expert: 22 };
   const STATS_KEY = "sudoku.stats.v1";
   const PREFS_KEY = "sudoku.prefs.v1";
   const GAME_KEY = "sudoku.game.v1";
@@ -1730,7 +1734,8 @@
     hintsUsed: 0,
     errorsMade: 0,
     didReset: false,
-    history: []
+    history: [],
+    lastGrade: null,
   };
 
   const HISTORY_LIMIT = 30;
@@ -1768,33 +1773,39 @@
   function emptyPencilColors(){ return Array.from({length:9}, () => Array.from({length:9}, () => new Map())); }
   const COLOR_IDS = ["red","orange","yellow","green","blue","purple"];
 
-  function loadPuzzle(diff){
-    const target = DIFF_TARGETS[diff] || 32;
-    const { puzzle, solution } = generatePuzzle(target);
-    state.difficulty = diff;
-    state.board = puzzle;
-    state.solution = solution;
-    state.values = clone(puzzle);
-    state.pencils = emptyPencils();
-    state.cellColors = emptyCellColors();
-    state.pencilColors = emptyPencilColors();
-    state.activeColor = null;
-    state.lastColorTap = null;
-    state.completedUnits = { rows: new Set(), cols: new Set(), boxes: new Set() };
-    state.lastCorrect = null;
-    state.lastWrong = null;
-    state.selected = null;
-    state.multiCells = [];
-    state.selectMode = false;
-    state.hint = null;
-    state.timerSec = 0;
-    state.won = false;
-    state.lastPlaced = null;
-    state.hintsUsed = 0;
-    state.errorsMade = 0;
-    state.didReset = false;
-    state.history = [];
-    closeHintPop();
+  // Async loader: technique-based grading retries until tier matches (or
+  // budget exhausts). Caller passes `onDone()` to be notified when the new
+  // puzzle is ready; `onProgress(done, total)` is fired periodically so the
+  // loading subtitle can show progress through long Expert searches.
+  function loadPuzzle(diff, onProgress, onDone){
+    generatePuzzleAtTier(diff, onProgress, (result) => {
+      state.difficulty = diff;
+      state.board = result.puzzle;
+      state.solution = result.solution;
+      state.lastGrade = result.grade || null;
+      state.values = clone(result.puzzle);
+      state.pencils = emptyPencils();
+      state.cellColors = emptyCellColors();
+      state.pencilColors = emptyPencilColors();
+      state.activeColor = null;
+      state.lastColorTap = null;
+      state.completedUnits = { rows: new Set(), cols: new Set(), boxes: new Set() };
+      state.lastCorrect = null;
+      state.lastWrong = null;
+      state.selected = null;
+      state.multiCells = [];
+      state.selectMode = false;
+      state.hint = null;
+      state.timerSec = 0;
+      state.won = false;
+      state.lastPlaced = null;
+      state.hintsUsed = 0;
+      state.errorsMade = 0;
+      state.didReset = false;
+      state.history = [];
+      closeHintPop();
+      if (onDone) onDone(result);
+    });
   }
 
   function getCandidates(r, c){
@@ -2356,6 +2367,203 @@
     { name:"swordfish",      fn: findAllSwordfish },
     { name:"ur-1",           fn: findAllUniqueRectangleT1 },
   ];
+
+  // ===== Difficulty grading =====
+  // Grading order: techniques are applied in strict difficulty order so the
+  // tier we report is the *cheapest* path through the puzzle (consensus
+  // approach). The pipeline below differs slightly from HINT_PIPELINE — quads
+  // come before fish/wings, and each tier's "easier" techniques come first.
+  const GRADE_PIPELINE = [
+    { name:"pointing",       fn: findAllPointing },
+    { name:"box-line",       fn: findAllBoxLine },
+    { name:"naked-pair",     fn: m => findAllNakedSubset(m, 2) },
+    { name:"hidden-pair",    fn: m => findAllHiddenSubset(m, 2) },
+    { name:"naked-triple",   fn: m => findAllNakedSubset(m, 3) },
+    { name:"hidden-triple",  fn: m => findAllHiddenSubset(m, 3) },
+    { name:"naked-quad",     fn: m => findAllNakedSubset(m, 4) },
+    { name:"hidden-quad",    fn: m => findAllHiddenSubset(m, 4) },
+    { name:"x-wing",         fn: findAllXWing },
+    { name:"skyscraper",     fn: findAllSkyscraper },
+    { name:"ur-1",           fn: findAllUniqueRectangleT1 },
+    { name:"y-wing",         fn: findAllYWing },
+    { name:"swordfish",      fn: findAllSwordfish },
+    { name:"xyz-wing",       fn: findAllXYZWing },
+  ];
+  // Per-technique scores (loosely Hodoku × ½). Singles are cheap, fish/wings
+  // expensive. The score sum is a secondary tier gate that catches puzzles
+  // needing many medium-tier moves even if no advanced technique is required.
+  const TECH_SCORES = {
+    "naked-single":  4,  "hidden-single": 14,
+    "pointing":      50, "box-line":      60,
+    "naked-pair":    60, "hidden-pair":   70,
+    "naked-triple":  80, "hidden-triple": 100,
+    "naked-quad":    150,"hidden-quad":   150,
+    "x-wing":        140,"skyscraper":    130,
+    "ur-1":          100,"y-wing":        160,
+    "swordfish":     200,"xyz-wing":      180,
+  };
+  // Technique → tier index (0 easy … 4 expert). The mapping is calibrated to
+  // the natural distribution of techniques across random puzzles: triples and
+  // quads almost never appear as the lone hardest technique in random space,
+  // so they sit at "Hard" alongside X-Wing/Skyscraper rather than getting
+  // their own (mostly empty) tier.
+  const TIER_OF_TECHNIQUE = {
+    "naked-single":  0, "hidden-single": 0,
+    "pointing":      1, "box-line":      1, "naked-pair":  1, "hidden-pair": 1,
+    "naked-triple":  2, "hidden-triple": 2, "naked-quad":  2, "hidden-quad": 2,
+    "x-wing":        2, "skyscraper":    2,
+    "y-wing":        3, "ur-1":          3,
+    "swordfish":     4, "xyz-wing":      4,
+  };
+  const TIER_NAMES = ["easy", "medium", "hard", "extra-hard", "expert"];
+  const TIER_BY_NAME = { easy:0, medium:1, hard:2, "extra-hard":3, expert:4 };
+  // Score-based bump kicks in only for procedurally heavy puzzles. Pure-
+  // singles puzzles routinely score 200–400; pairs add ~50 each. Setting the
+  // first bucket at 800 keeps singles puzzles firmly in Easy.
+  const TIER_SCORE_BUCKETS = [800, 2000, 4000, 9000];
+
+  // Solve the puzzle using techniques in increasing difficulty order, recording
+  // which ones were used. Returns { solved, hardest (tier idx), score, counts }.
+  // If the puzzle requires techniques outside the repertoire (chains / forcing
+  // nets / brute force), `solved: false` is returned — those are rejected by
+  // the grader, never tier-rated.
+  function solveAndGrade(board){
+    const values = board.map(r => r.slice());
+    const map = computeCandidates(values);
+    let totalScore = 0;
+    let hardestTier = 0;
+    const counts = {};
+    function applyTech(name){
+      counts[name] = (counts[name] || 0) + 1;
+      totalScore += TECH_SCORES[name] || 0;
+      const t = TIER_OF_TECHNIQUE[name];
+      if (t > hardestTier) hardestTier = t;
+    }
+    function placeDigit(r, c, digit){
+      values[r][c] = digit;
+      map[r][c] = new Set();
+      for (let i = 0; i < 9; i++){
+        if (i !== c) map[r][i].delete(digit);
+        if (i !== r) map[i][c].delete(digit);
+      }
+      const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
+      for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++){
+        if (br+i !== r || bc+j !== c) map[br+i][bc+j].delete(digit);
+      }
+    }
+    let safety = 200;
+    while (safety-- > 0){
+      // Phase 1: drain naked + hidden singles greedily (free progress).
+      let changed = true;
+      while (changed){
+        changed = false;
+        const ns = findNakedSingleInMap(map);
+        if (ns && values[ns.r][ns.c] === 0){
+          placeDigit(ns.r, ns.c, ns.digit);
+          applyTech("naked-single");
+          changed = true;
+          continue;
+        }
+        const hs = findHiddenSingleInMap(map);
+        if (hs && values[hs.r][hs.c] === 0){
+          placeDigit(hs.r, hs.c, hs.digit);
+          applyTech("hidden-single");
+          changed = true;
+        }
+      }
+      // Done?
+      let complete = true;
+      for (let r = 0; r < 9 && complete; r++) for (let c = 0; c < 9 && complete; c++){
+        if (values[r][c] === 0) complete = false;
+      }
+      if (complete){
+        return { solved: true, hardest: hardestTier, score: totalScore, counts };
+      }
+      // Phase 2: apply the easiest technique whose pattern actually narrows
+      // the candidate map. We only count it if some elimination is fresh.
+      let appliedThisRound = false;
+      for (const tech of GRADE_PIPELINE){
+        const patterns = tech.fn(map);
+        for (const p of patterns){
+          let madeChange = false;
+          for (const e of p.eliminations){
+            if (map[e.r][e.c].has(e.digit)){ madeChange = true; break; }
+          }
+          if (!madeChange) continue;
+          for (const e of p.eliminations) map[e.r][e.c].delete(e.digit);
+          applyTech(tech.name);
+          appliedThisRound = true;
+          break;
+        }
+        if (appliedThisRound) break;
+      }
+      if (!appliedThisRound){
+        // Stuck — needs a technique we don't implement (chains, etc.)
+        return { solved: false, hardest: hardestTier, score: totalScore, counts };
+      }
+    }
+    return { solved: false, hardest: hardestTier, score: totalScore, counts };
+  }
+  // Combine technique-based and score-based tiers; the higher one wins.
+  function tierFromGrade(grade){
+    if (!grade || !grade.solved) return null;
+    const byTech = grade.hardest;
+    let byScore = 0;
+    for (let i = 0; i < TIER_SCORE_BUCKETS.length; i++){
+      if (grade.score > TIER_SCORE_BUCKETS[i]) byScore = i + 1;
+    }
+    return Math.max(byTech, byScore);
+  }
+  // How many generate+grade attempts we'll burn before giving up and using
+  // the closest-tier puzzle we found. Higher tiers are rare in random space,
+  // so they need bigger budgets. Empirical hit rates: Easy ≈ 99%, Medium ≈ 5%,
+  // Hard ≈ 5%, Extra hard ≈ 8%, Expert ≈ 2%.
+  const GEN_BUDGET = { easy: 50, medium: 200, hard: 300, "extra-hard": 400, expert: 1500 };
+  // Async tiered generator: chunks attempts via setTimeout so the loading
+  // spinner stays responsive even when Expert generation takes many seconds.
+  // Falls back to the closest-tier puzzle if the budget runs out.
+  function generatePuzzleAtTier(tierName, onProgress, onDone){
+    const targetClues = DIFF_TARGETS[tierName] || 32;
+    const targetTier = TIER_BY_NAME[tierName];
+    const budget = GEN_BUDGET[tierName] || 100;
+    let attempt = 0;
+    let bestResult = null;
+    let bestGrade = null;
+    let bestDistance = Infinity;
+    function tick(){
+      const batchEnd = Math.min(attempt + 4, budget);
+      for (; attempt < batchEnd; attempt++){
+        const result = generatePuzzle(targetClues);
+        const grade = solveAndGrade(result.puzzle);
+        if (!grade.solved) continue; // reject — needs forcing chains etc.
+        const actualTier = tierFromGrade(grade);
+        if (actualTier === targetTier){
+          onDone({ puzzle: result.puzzle, solution: result.solution, grade, attempts: attempt + 1, fallback: false });
+          return;
+        }
+        const dist = Math.abs(actualTier - targetTier);
+        if (dist < bestDistance){
+          bestResult = result;
+          bestGrade = grade;
+          bestDistance = dist;
+        }
+      }
+      if (onProgress) onProgress(attempt, budget);
+      if (attempt < budget){
+        setTimeout(tick, 0);
+      } else {
+        if (bestResult){
+          onDone({ puzzle: bestResult.puzzle, solution: bestResult.solution, grade: bestGrade, attempts: attempt, fallback: true });
+        } else {
+          // No solvable puzzles found at all — extreme edge case. Fall back
+          // to a plain generated puzzle without grading.
+          const result = generatePuzzle(targetClues);
+          onDone({ puzzle: result.puzzle, solution: result.solution, grade: null, attempts: attempt, fallback: true });
+        }
+      }
+    }
+    tick();
+  }
 
   function findHint(){
     const map = computeCandidates(state.values);
@@ -3517,18 +3725,23 @@
   function newPuzzle(diff){
     document.getElementById("modal-diff-x").classList.remove("open");
     document.getElementById("modal-win-x").classList.remove("open");
+    const label = document.getElementById("loading-label-x");
+    if (label) label.textContent = `Generating ${DIFF_LABELS[diff] || diff} puzzle…`;
     setLoading(true);
-    // Defer to next frame so the spinner paints before generation blocks
+    // Defer one frame so the spinner paints before the first generation tick.
     setTimeout(() => {
-      try {
-        loadPuzzle(diff);
-      } finally {
-        setLoading(false);
-      }
-      state.tool = "pen";
-      render();
-      stopTimer();
-      startTimer();
+      loadPuzzle(diff,
+        (done, total) => {
+          if (label) label.textContent = `Generating ${DIFF_LABELS[diff] || diff} puzzle… (${done}/${total})`;
+        },
+        () => {
+          setLoading(false);
+          state.tool = "pen";
+          render();
+          stopTimer();
+          startTimer();
+          if (label) label.textContent = "Generating puzzle…";
+        });
     }, 30);
   }
 
@@ -4536,10 +4749,18 @@
       setLoading(false);
       showResumeModal();
     } else {
-      loadPuzzle(state.difficulty);
-      render();
-      startTimer();
-      setLoading(false);
+      const label = document.getElementById("loading-label-x");
+      if (label) label.textContent = `Generating ${DIFF_LABELS[state.difficulty] || state.difficulty} puzzle…`;
+      loadPuzzle(state.difficulty,
+        (done, total) => {
+          if (label) label.textContent = `Generating ${DIFF_LABELS[state.difficulty] || state.difficulty} puzzle… (${done}/${total})`;
+        },
+        () => {
+          render();
+          startTimer();
+          setLoading(false);
+          if (label) label.textContent = "Generating puzzle…";
+        });
     }
   }, 30);
 
@@ -4551,7 +4772,7 @@
   });
 
   // Expose for testing
-  window.__sudoku = { state, isComplete, generatePuzzle, render };
+  window.__sudoku = { state, isComplete, generatePuzzle, render, solveAndGrade, tierFromGrade, generatePuzzleAtTier, TIER_NAMES };
 })();
 </script>
 </body>
