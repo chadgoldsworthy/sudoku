@@ -1338,6 +1338,10 @@
         <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"><path d="M11 1.5L14.5 5 5 14.5H1.5V11L11 1.5z"/><path d="M9 3.5l3.5 3.5"/></svg>
         <span>Pencil</span>
       </button>
+      <button type="button" class="tool-x" id="marks-btn-x" aria-label="Add pencil marks">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><circle cx="3.5" cy="3.5" r="1.1"/><circle cx="8" cy="3.5" r="1.1"/><circle cx="12.5" cy="3.5" r="1.1"/><circle cx="3.5" cy="8" r="1.1"/><circle cx="8" cy="8" r="1.1"/><circle cx="12.5" cy="8" r="1.1"/><circle cx="3.5" cy="12.5" r="1.1"/><circle cx="8" cy="12.5" r="1.1"/><circle cx="12.5" cy="12.5" r="1.1"/></svg>
+        <span>Marks</span>
+      </button>
       <button type="button" class="tool-x" data-tool="eraser">
         <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"><path d="M9.5 1.8l4.7 4.7L7 13.7H2.3L1 12.4l8.5-10.6z"/><path d="M5.5 9.7l4.8 4"/></svg>
         <span>Erase</span>
@@ -1489,13 +1493,6 @@
             <p class="set-sub-x">Mark a cell red when the digit you entered doesn't match the puzzle's solution, even if there's no conflict yet.</p>
           </div>
           <button type="button" class="switch-x" data-toggle="highlightIncorrect" aria-label="Toggle"></button>
-        </div>
-        <div class="set-row-x">
-          <div class="set-text-x">
-            <p class="set-title-x">Auto-pencil</p>
-            <p class="set-sub-x">Auto-fill candidate marks in empty cells. Existing marks are preserved when off.</p>
-          </div>
-          <button type="button" class="switch-x" data-toggle="autoPencil" aria-label="Toggle"></button>
         </div>
         <div class="set-row-x">
           <div class="set-text-x">
@@ -1774,7 +1771,7 @@
     lastWrong: null,
     tool: "pen",
     hint: null,
-    toggles: { highlightConflict:true, highlightIncorrect:false, autoPencil:false, autoRemovePencil:true, highlightPeers:true, highlightSameNumber:true },
+    toggles: { highlightConflict:true, highlightIncorrect:false, autoRemovePencil:true, highlightPeers:true, highlightSameNumber:true },
     theme: "light",
     timerSec: 0,
     timerInterval: null,
@@ -2735,7 +2732,6 @@
         } else {
           const userMarks = state.pencils[r][c];
           const marks = new Set(userMarks);
-          if (state.toggles.autoPencil) getCandidates(r, c).forEach(d => marks.add(d));
           // For the placement step of a hint, the cell is empty in `pencils`
           // (or may not contain the digit), but we still want to show the
           // about-to-place digit as a focused candidate. Force-add it.
@@ -3132,6 +3128,38 @@
       setTimeout(() => els.forEach(el => el.classList.remove("ripple")), 500);
     });
   }
+  // One-shot action: for every empty user-cell, add any missing candidate to
+  // its pencil marks. Existing marks are preserved (so the user can remove
+  // marks and re-run the action to top them back up). When the Select tool
+  // has cells highlighted, only those are filled.
+  function fillPencilMarks(){
+    if (state.won) return;
+    const targets = [];
+    const scoped = (state.multiCells && state.multiCells.length) ? state.multiCells : null;
+    if (scoped){
+      for (const { r, c } of scoped){
+        if (state.board[r][c] === 0 && state.values[r][c] === 0) targets.push({ r, c });
+      }
+    } else {
+      for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++){
+        if (state.board[r][c] === 0 && state.values[r][c] === 0) targets.push({ r, c });
+      }
+    }
+    if (!targets.length) return;
+    pushHistory();
+    const flashed = [];
+    for (const { r, c } of targets){
+      const cands = getCandidates(r, c);
+      let added = false;
+      for (const d of cands){
+        if (!state.pencils[r][c].has(d)){ state.pencils[r][c].add(d); added = true; }
+      }
+      if (added) flashed.push({ r, c });
+    }
+    render();
+    flashColorRipple(flashed);
+  }
+
   // Animate an integer count from 0 → target on a stats DOM element.
   function animateCountUp(el, target, durationMs){
     if (!el) return;
@@ -4492,6 +4520,14 @@
     document.getElementById("hint-btn-x").addEventListener("click", showHint);
     document.getElementById("reset-btn-x").addEventListener("click", requestReset);
     document.getElementById("undo-btn-x").addEventListener("click", undo);
+    document.getElementById("marks-btn-x").addEventListener("click", () => {
+      const el = document.getElementById("marks-btn-x");
+      el.classList.remove("just-activated");
+      void el.offsetWidth;
+      el.classList.add("just-activated");
+      setTimeout(() => el.classList.remove("just-activated"), 240);
+      fillPencilMarks();
+    });
 
     document.getElementById("confirm-ok-x").addEventListener("click", () => {
       const fn = _confirmHandler;
